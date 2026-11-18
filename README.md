@@ -70,7 +70,7 @@ Left for the person to read: other-tenants, another tenant's rows never count.
 1 changed file is in no planned box: `grisha outside` lists it. Say why each one changed in the pull request, or add a box that covers it to the sheet.
 ```
 
-The rest of this page quotes the same task. `bun run session` prints all of it, from the first command to the pull request section.
+The rest of this page quotes the same task. From a clone, `bun run session` prints all of it, from the first command to the pull request section.
 
 ## Install
 
@@ -103,7 +103,7 @@ exec grisha gate
 exec grisha gate --proven
 ```
 
-An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you anything. In Claude Code, a hook in `settings.json` cannot be skipped, and it is what puts the plan in front of you when the agent runs `grisha approve`. You name the commands it stops:
+An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you anything. In Claude Code, a hook in `settings.json` has no such flag, and it is what puts the plan in front of you when the agent runs `grisha approve`. You name the commands it stops:
 
 ```json
 {
@@ -114,7 +114,9 @@ An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you an
 }
 ```
 
-Without that hook, `grisha approve` works only in a terminal, where it shows you the plan and asks you to type yes.
+The hook looks for those words in the command as typed, so `git -C <folder> commit` is not `git commit`. Git hooks see every commit and push however it was typed, so use both when you want nothing to slip past.
+
+Without the Claude Code hook, `grisha approve` works only in a terminal, where it shows you the plan and asks you to type yes.
 
 [docs/hosts.md](docs/hosts.md) covers other apps, how approval stays with you, and how a view draws the sheet.
 

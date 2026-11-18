@@ -10,7 +10,7 @@ import type { World } from "./world"
 
 const STARTER_RULES = join(import.meta.dir, "..", "rules", "starter.json")
 
-const USAGE = `proofsheet: one sheet per task that says what must be true and how each claim is proven.
+const USAGE = `grisha: one sheet per task that says what must be true and how each claim is proven.
 
   start "<task>"      begin a sheet for a task in this checkout, or pick it up again
   show                the plan and where each claim stands (--json, --mermaid)
@@ -36,7 +36,7 @@ const OPTIONS = {
   help: { type: "boolean" },
 } as const
 
-const NOT_A_REPOSITORY = "Not inside a git repository. Run proofsheet from the checkout you are working in."
+const NOT_A_REPOSITORY = "Not inside a git repository. Run grisha from the checkout you are working in."
 
 function parse(argv: string[]) {
   try {
@@ -58,7 +58,7 @@ export async function main(argv: string[], world: World): Promise<number> {
   } catch (error) {
     const problem = error instanceof Error ? error.message : String(error)
     if (argv[0] === "hook") {
-      world.print(deny(`proofsheet could not check this command, so it is refused.\n${problem}`))
+      world.print(deny(`grisha could not check this command, so it is refused.\n${problem}`))
       return 0
     }
     if (!(error instanceof GitProblem)) throw error
@@ -105,9 +105,9 @@ async function answer(argv: string[], world: World): Promise<number> {
 
   if (command === "start") {
     const title = words.join(" ").trim()
-    if (!title) return fail('Say what the task is: proofsheet start "Unread badge counts only this user\'s rows"')
+    if (!title) return fail('Say what the task is: grisha start "Unread badge counts only this user\'s rows"')
     const started = startTask(world, here, title)
-    return say(`${started.existed ? "Picked up the sheet" : "New sheet"}: ${started.path}`, "Write the boxes and units into it, then run `proofsheet show`.")
+    return say(`${started.existed ? "Picked up the sheet" : "New sheet"}: ${started.path}`, "Write the boxes and units into it, then run `grisha show`.")
   }
   if (command === "home") return say(here.home)
   if (command === "rules") {
@@ -136,7 +136,7 @@ async function answer(argv: string[], world: World): Promise<number> {
       approveRules(world, files)
       return say("Approved.")
     }
-    if (files.every((file) => file.text === null && !file.approved)) return say(`No rules yet. \`proofsheet rules --init\` writes a starter set to ${yours?.path}.`, ...read)
+    if (files.every((file) => file.text === null && !file.approved)) return say(`No rules yet. \`grisha rules --init\` writes a starter set to ${yours?.path}.`, ...read)
     const groups = [...loadRules(files).groups].map(([name, patterns]) => `  ${name}  ${patterns.join("  ")}`)
     const where = groups.length > 0 ? [...read, "", "File groups a rule can apply to. A later file replaces a group by name:", ...groups] : read
     const { broken, caught } = brokenRules(world, here, base(), files)
@@ -145,7 +145,7 @@ async function answer(argv: string[], world: World): Promise<number> {
   }
 
   const task = currentTask(world, here)
-  if (!task) return fail('No task is started in this checkout. Begin with: proofsheet start "<task>"')
+  if (!task) return fail('No task is started in this checkout. Begin with: grisha start "<task>"')
   if ("problems" in task) return fail(`Fix the sheet at ${task.path}:`, ...task.problems.map((problem) => `- ${problem}`))
   const seen = () => view(world, here, task)
 

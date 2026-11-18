@@ -12,7 +12,7 @@ const sha = (text: string) => createHash("sha256").update(text).digest("hex")
 export function upstream(world: Pick<World, "git" | "read" | "print">): number {
   const here = checkout(world)
   if (!here) {
-    world.print("Run this inside the proofsheet repository.")
+    world.print("Run this inside the grisha repository.")
     return 2
   }
   const heads = new Map<string, string>()

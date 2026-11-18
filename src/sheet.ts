@@ -29,7 +29,7 @@ export type View = {
   units: (Omit<Unit, "claims"> & { claims: (Claim & { status: Status })[] })[]
 }
 
-const rerun = (id: string) => `Run \`proofsheet run ${id}\`.`
+const rerun = (id: string) => `Run \`grisha run ${id}\`.`
 
 const BLOCKS: Record<Status, { at: Moment; fix: (id: string) => string } | null> = {
   "no check": { at: "push", fix: (id) => `${id} has no check. Give it one, or set its check to { "how": "person reads" }.` },
@@ -39,7 +39,7 @@ const BLOCKS: Record<Status, { at: Moment; fix: (id: string) => string } | null>
   stale: { at: "commit", fix: (id) => `${id} is stale. ${rerun(id)}` },
   "passes, never seen failing": {
     at: "push",
-    fix: (id) => `${id} passes but was never seen failing. Break the code it covers, run \`proofsheet run ${id}\`, restore the code and run it again.`,
+    fix: (id) => `${id} passes but was never seen failing. Break the code it covers, run \`grisha run ${id}\`, restore the code and run it again.`,
   },
   proven: null,
 }
@@ -52,11 +52,11 @@ const taskDir = (here: Place, name: string) => join(here.home, "tasks", name)
 const planHash = (sheet: Sheet) => sha(JSON.stringify(sheet))
 const pathsOf = (sheet: Sheet, boxes: string[]) => sheet.boxes.filter((box) => boxes.includes(box.name)).flatMap((box) => box.paths)
 
-export const APPROVE_HINT = "The person approves it by running `proofsheet approve` in their own terminal."
+export const APPROVE_HINT = "The person approves it by running `grisha approve` in their own terminal."
 
 export function place(world: World): Place | null {
   const found = checkout(world)
-  return found && { root: found.root, home: join(world.home, "repos", found.name.replace(/[^A-Za-z0-9._-]/g, "-")), pointer: join(found.gitDir, "proofsheet-task") }
+  return found && { root: found.root, home: join(world.home, "repos", found.name.replace(/[^A-Za-z0-9._-]/g, "-")), pointer: join(found.gitDir, "grisha-task") }
 }
 
 function parseSheet(text: string): Sheet | string[] {

@@ -9,7 +9,7 @@ import { main } from "../src/main"
 import { lines } from "../src/text"
 import { realIO, type World } from "../src/world"
 
-const temp = (name: string) => realpathSync(mkdtempSync(join(tmpdir(), `proofsheet-${name}-`)))
+const temp = (name: string) => realpathSync(mkdtempSync(join(tmpdir(), `grisha-${name}-`)))
 
 const SHEET = {
   task: "Count only unread rows",
@@ -60,8 +60,8 @@ function scene(cwd?: string) {
     return { code: await main(args, world), out: printed.join("\n") }
   }
   const share = (rules: unknown) => {
-    put(".proofsheet/rules.json", typeof rules === "string" ? rules : JSON.stringify(rules))
-    git("add", ".proofsheet")
+    put(".grisha/rules.json", typeof rules === "string" ? rules : JSON.stringify(rules))
+    git("add", ".grisha")
     git("commit", "-q", "-m", "rules")
   }
   let sheet = ""
@@ -222,7 +222,7 @@ test("a repository's rules add to yours, replace one by name and turn one off, f
   const here = await run(["rules"])
   expect(lines(here.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:2  no-new-effects", "src/app/New.test.tsx:1  no-act"])
   expect(here.out).toContain("Use the loader.")
-  expect(here.out).toContain(join(root, ".proofsheet", "rules.json"))
+  expect(here.out).toContain(join(root, ".grisha", "rules.json"))
 
   const elsewhere = await other.run(["rules"], { home })
   expect(lines(elsewhere.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:1  no-new-comments", "src/app/New.tsx:2  no-new-effects"])
@@ -232,7 +232,7 @@ test("a repository's rules add to yours, replace one by name and turn one off, f
 test("a rules file that turns off a rule nobody has, names a file group nobody defines, or cannot be read blocks with the file's path", async () => {
   const { run, share, root } = scene()
   await run(["rules", "--init"])
-  const committed = join(root, ".proofsheet", "rules.json")
+  const committed = join(root, ".grisha", "rules.json")
   share({ rules: [{ name: "no-new-comment", off: true }, { name: "no-act", pattern: "\\bact\\(", files: "specs", fix: "Wait." }] })
   const typo = await run(["gate"])
   expect(typo.code).toBe(1)
@@ -283,7 +283,7 @@ test("a change to your rules blocks until you approve it, once for every reposit
   expect((await other.run(["gate"], { home })).code).toBe(1)
 
   expect((await run(["rules", "--approve"], { ask: null })).out).toContain("in their own terminal")
-  expect((await run(["gate", "--for", "PROOFSHEET_HOST_APPROVES=1 proofsheet rules --approve"])).code).toBe(1)
+  expect((await run(["gate", "--for", "GRISHA_HOST_APPROVES=1 grisha rules --approve"])).code).toBe(1)
   const asked: string[] = []
   await run(["rules", "--approve"], { ask: async (shown) => (asked.push(shown), "yes") })
   expect(asked.join()).toContain("no longer in force: no-spies")
@@ -307,11 +307,11 @@ test("a branch cannot loosen the repository's committed rules for itself", async
   share({ rules: [{ name: "no-act", pattern: "\\bact\\(", files: "tests", fix: "Wait for what the user sees." }] })
   git("checkout", "-q", "-b", "work")
   put("src/app/New.test.tsx", "act(() => {})\n")
-  put(".proofsheet/rules.json", JSON.stringify({ rules: [] }))
+  put(".grisha/rules.json", JSON.stringify({ rules: [] }))
   const edited = await run(["rules"])
   expect(edited.out).toContain("src/app/New.test.tsx:1  no-act")
   expect(edited.out).toContain("waits to be merged")
-  git("add", ".proofsheet")
+  git("add", ".grisha")
   git("commit", "-q", "-m", "loosen")
   expect((await run(["gate"])).out).toContain("src/app/New.test.tsx:1  no-act")
 
@@ -393,7 +393,7 @@ test("the hook refuses an agent's approval and a commit over a failing claim, an
   await run(["approve"])
   await run(["run"])
   const asked = (command: string) => run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
-  expect((await asked("proofsheet approve")).out).toContain('"permissionDecision":"deny"')
+  expect((await asked("grisha approve")).out).toContain('"permissionDecision":"deny"')
   expect((await asked("git commit -m wip")).out).toContain("counts-unread is failing.")
   expect((await asked("git status")).out).toBe("")
 })
@@ -403,7 +403,7 @@ test("any host can pass the command about to run and get the same answer in plai
   await plan()
   await run(["approve"])
   await run(["run"])
-  const approval = await run(["gate", "--for", "PROOFSHEET_HOST_APPROVES=1 proofsheet approve"])
+  const approval = await run(["gate", "--for", "GRISHA_HOST_APPROVES=1 grisha approve"])
   expect(approval.code).toBe(1)
   expect(approval.out).toContain("in their own terminal")
   const commit = await run(["gate", "--for", "git commit -m wip"])

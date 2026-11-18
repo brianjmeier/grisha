@@ -5,7 +5,7 @@ import type { World } from "./world"
 export const APPROVAL_IS_THE_PERSONS = "Approval belongs to the person, who runs this in their own terminal."
 
 export function momentOf(command: string): "approve" | Moment | null {
-  if (/\bproofsheet(\.ts)?\s+(approve\b|rules\s.*--approve\b)/.test(command)) return "approve"
+  if (/\bgrisha(\.ts)?\s+(approve\b|rules\s.*--approve\b)/.test(command)) return "approve"
   if (/\bgit\s+push\b|\bgh\s+pr\s+create\b/.test(command)) return "push"
   if (/\bgit\s+commit\b/.test(command)) return "commit"
   return null

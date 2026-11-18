@@ -18,10 +18,10 @@ async function ask(question: string): Promise<string> {
 process.exit(
   await main(process.argv.slice(2), {
     ...realIO(process.cwd()),
-    home: process.env.PROOFSHEET_HOME ?? join(homedir(), ".proofsheet"),
+    home: process.env.GRISHA_HOME ?? join(homedir(), ".grisha"),
     now: () => new Date(),
     input: () => (inTerminal ? "" : readFileSync(0, "utf8")),
-    hostApproves: process.env.PROOFSHEET_HOST_APPROVES === "1",
+    hostApproves: process.env.GRISHA_HOST_APPROVES === "1",
     ask: inTerminal ? ask : null,
   }),
 )

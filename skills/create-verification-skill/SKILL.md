@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create a verification skill
 
-Every serious project needs a scripted way to drive the real app and prove behavior: launch it, exercise a feature the way a user would, and capture evidence. This skill generates that as a skill tailored to the repo, in `verify-<app>/` under the folder that `proofsheet home` prints. That folder is the person's own and sits outside the checkout, so nothing lands in the repository. If the repository already keeps a `verify-*` skill, update that one instead. You write the generator's output for the next agent, not for a human: it will be read cold, mid-task, by an agent that has never seen the app.
+Every serious project needs a scripted way to drive the real app and prove behavior: launch it, exercise a feature the way a user would, and capture evidence. This skill generates that as a skill tailored to the repo, in `verify-<app>/` under the folder that `grisha home` prints. That folder is the person's own and sits outside the checkout, so nothing lands in the repository. If the repository already keeps a `verify-*` skill, update that one instead. You write the generator's output for the next agent, not for a human: it will be read cold, mid-task, by an agent that has never seen the app.
 
 ## 1. Interview the repo, not the user
 

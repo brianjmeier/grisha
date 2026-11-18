@@ -6,5 +6,5 @@
   "sources": {
     "skills/maintain-formal-verification-skill/SKILL.md": "0c96f54293542d3818b68754562b338073958781a9684454611dca37592e2d2c"
   },
-  "adaptation": "Looks for the verify skill in the person's proofsheet folder first, where create-formal-verification-skill writes it."
+  "adaptation": "Looks for the verify skill in the person's grisha folder first, where create-formal-verification-skill writes it."
 }

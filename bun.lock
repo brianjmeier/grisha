@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "proofsheet",
+      "name": "grisha",
       "devDependencies": {
         "@types/bun": "^1.3.0",
         "typescript": "^5.9.0",

@@ -13,9 +13,9 @@ type Loaded = { rules: Rule[]; groups: Map<string, string[]>; problems: string[]
 
 type Checkout = { root: string; home: string }
 
-export const RULES_APPROVE_HINT = "The person approves them by running `proofsheet rules --approve` in their own terminal."
+export const RULES_APPROVE_HINT = "The person approves them by running `grisha rules --approve` in their own terminal."
 
-const COMMITTED = join(".proofsheet", "rules.json")
+const COMMITTED = join(".grisha", "rules.json")
 
 export function ruleFiles(world: World, here: Checkout, base: string) {
   const yours = (covers: string, folder: string) => {

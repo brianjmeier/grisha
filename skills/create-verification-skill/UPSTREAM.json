@@ -9,5 +9,5 @@
     "skills/create-verification-skill/references/feature-map-example/create-note.md": "644a44c74f35d38c2feb7cd05a0121fdebbb623e8dc376c185b565a581d1ccf7",
     "skills/create-verification-skill/references/feature-map-example/search.md": "6e87b9e7f2791a7776ba1bb83f371cd285c306c67f19d245cc4dd6ca3015c823"
   },
-  "adaptation": "The generated skill goes to the person's proofsheet folder outside the checkout, not to .cursor/skills."
+  "adaptation": "The generated skill goes to the person's grisha folder outside the checkout, not to .cursor/skills."
 }

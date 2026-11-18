@@ -6,5 +6,5 @@
   "sources": {
     "skills/create-formal-verification-skill/SKILL.md": "30ef0ac27612ecd16fdc081112113221d673053cef3f8603db11932193861211"
   },
-  "adaptation": "The generated skill goes to the person's proofsheet folder; statechart is the copy in this project."
+  "adaptation": "The generated skill goes to the person's grisha folder; statechart is the copy in this project."
 }

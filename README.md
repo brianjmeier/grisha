@@ -1,15 +1,15 @@
-# proofsheet
+# grisha
 
-A coding agent says "done, tests pass". Proofsheet makes it show that.
+A coding agent says "done, tests pass". Grisha makes it show that.
 
-For each task the agent writes a sheet: the claims that must be true when the work is finished, and the command that checks each one. You approve the sheet before any code is written. After that the `proofsheet` command runs the checks itself and says where each claim stands, so the agent cannot mark its own work.
+For each task the agent writes a sheet: the claims that must be true when the work is finished, and the command that checks each one. You approve the sheet before any code is written. After that the `grisha` command runs the checks itself and says where each claim stands, so the agent cannot mark its own work.
 
 ## One task
 
 A badge counts every row and should count only unread ones. The agent writes its plan on a sheet, and this is how the plan reads back:
 
 ```console
-$ proofsheet show
+$ grisha show
 Count only unread rows
 plan not approved · 1 unit · 3 claims: 2 not run, 1 no check
 
@@ -25,8 +25,8 @@ plan not approved · 1 unit · 3 claims: 2 not run, 1 no check
 The agent cannot approve its own plan:
 
 ```console
-$ proofsheet approve
-The person approves it by running `proofsheet approve` in their own terminal.
+$ grisha approve
+The person approves it by running `grisha approve` in their own terminal.
 (exit 1)
 ```
 
@@ -40,13 +40,13 @@ Approved. Build one unit at a time: run its checks, see them fail, make the chan
 A check for new behaviour has to fail before it can prove anything. The agent runs the checks, makes the change, and runs them again:
 
 ```console
-$ proofsheet run
-counts-unread: failed (exit 1)    ~/.proofsheet/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-1.txt
+$ grisha run
+counts-unread: failed (exit 1)    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-1.txt
 …
     proves  counts-unread: the badge shows the number of unread rows    [failing]
 …
-$ proofsheet run counts-unread
-counts-unread: passed    ~/.proofsheet/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-2.txt
+$ grisha run counts-unread
+counts-unread: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-2.txt
 …
     proves  counts-unread: the badge shows the number of unread rows    [proven]
 ```
@@ -54,7 +54,7 @@ counts-unread: passed    ~/.proofsheet/repos/shop/tasks/count-only-unread-rows/e
 One claim still has no check, so the push is refused:
 
 ```console
-$ proofsheet gate --final
+$ grisha gate --final
 Before this goes further:
 - other-tenants has no check. Give it one, or set its check to { "how": "person reads" }.
 (exit 1)
@@ -64,13 +64,13 @@ The rest of this page quotes the same task. `bun run session` prints all of it, 
 
 ## Install
 
-Proofsheet needs [Bun](https://bun.sh).
+Grisha needs [Bun](https://bun.sh).
 
 ```sh
-git clone https://github.com/brianjmeier/proofsheet && cd proofsheet
+git clone https://github.com/brianjmeier/grisha && cd grisha
 bun install
-bun link                   # puts `proofsheet` on your PATH
-proofsheet rules --init    # writes your starter rules
+bun link                   # puts `grisha` on your PATH
+grisha rules --init    # writes your starter rules
 ```
 
 Give your agents the skills by linking each folder in `skills/` into the folder your agent reads skills from:
@@ -79,7 +79,7 @@ Give your agents the skills by linking each folder in `skills/` into the folder 
 for skill in skills/*/; do ln -s "$PWD/$skill" ~/.claude/skills/; done
 ```
 
-Sheets, rules and results live in `~/.proofsheet/`, outside your checkouts, so you can use it on a shared codebase without changing that codebase.
+Sheets, rules and results live in `~/.grisha/`, outside your checkouts, so you can use it on a shared codebase without changing that codebase.
 
 ### Make it refuse
 
@@ -87,10 +87,10 @@ Nothing is refused until something asks the gate before a commit or a push. Two 
 
 ```sh
 # pre-commit
-exec proofsheet gate
+exec grisha gate
 
 # pre-push
-exec proofsheet gate --final
+exec grisha gate --final
 ```
 
 An agent can skip git hooks with `--no-verify`. In Claude Code, a hook in `settings.json` cannot be skipped, and it also refuses the agent's own attempts to approve:
@@ -98,7 +98,7 @@ An agent can skip git hooks with `--no-verify`. In Claude Code, a hook in `setti
 ```json
 {
   "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "proofsheet hook || exit 2" }] }]
+    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "grisha hook || exit 2" }] }]
   }
 }
 ```
@@ -108,11 +108,11 @@ An agent can skip git hooks with `--no-verify`. In Claude Code, a hook in `setti
 ## The loop
 
 ```text
-1 claims     agent   proofsheet start "<task>", then what must be true after and what must stay true
+1 claims     agent   grisha start "<task>", then what must be true after and what must stay true
 2 map        agent   boxes are the modules touched; units are the build steps, each with its claims
-3 approve    you     proofsheet approve, in your own terminal; nothing is run before this
+3 approve    you     grisha approve, in your own terminal; nothing is run before this
 4 build      agent   one unit at a time: its check fails, the change, its check passes, commit
-5 hand over  agent   proofsheet gate --final, proofsheet outside, proofsheet pr
+5 hand over  agent   grisha gate --final, grisha outside, grisha pr
 ```
 
 ## What a claim's status means
@@ -132,16 +132,16 @@ Status is worked out on every call from the recorded runs and the files as they 
 In the task above, changing the code made the other check stale, so the commit was refused. Run again it passed, but it had passed before the change too and had never shown it could fail. The agent broke the code on purpose, ran the check, restored the code and ran it once more:
 
 ```console
-$ proofsheet gate
+$ grisha gate
 Before this goes further:
-- still-a-number is stale. Run `proofsheet run still-a-number`.
+- still-a-number is stale. Run `grisha run still-a-number`.
 (exit 1)
 …
     keeps   still-a-number: the badge still shows a number    [passes, never seen failing]
 …
-still-a-number: failed (exit 1)    ~/.proofsheet/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-3.txt
+still-a-number: failed (exit 1)    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-3.txt
 …
-still-a-number: passed    ~/.proofsheet/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-4.txt
+still-a-number: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-4.txt
 …
     keeps   still-a-number: the badge still shows a number    [proven]
 ```
@@ -194,11 +194,11 @@ A unit's kind is `pin` (record today's behaviour in a test before anything moves
 `outside` names what changed without being planned, and `pr` prints the proof for the pull request body:
 
 ```console
-$ proofsheet outside
+$ grisha outside
 Changed, but in no planned box:
   src/billing.ts
 …
-$ proofsheet pr
+$ grisha pr
 ## How this was proven
 
 1. **count unread rows** (change)
@@ -216,21 +216,21 @@ $ proofsheet pr
 A rule is a pattern, the files it applies to and the fix to name. Rules look only at lines the branch adds, so existing code never fails and nobody is asked to clean up a colleague's file. In the task above the agent left a comment in a new file:
 
 ```console
-$ proofsheet rules
+$ grisha rules
 src/billing.ts:1  no-new-comments
   + // TODO: bill unread rows only
   Delete the comment. If it explains a workaround, fix what it works around; if it states a constraint, turn the constraint into a type, a test or a check.
 ```
 
-The starter set from `proofsheet rules --init`: no new comments, effects, timers, lint suppressions, optional clocks or errors read by their wording, and in tests no skips, mocks, spies, fake timers, real clock, sleeps, casts, SQL or hand-set database role. Every catch is logged once to `catches.jsonl`, which is your record of what the rules actually stop.
+The starter set from `grisha rules --init`: no new comments, effects, timers, lint suppressions, optional clocks or errors read by their wording, and in tests no skips, mocks, spies, fake timers, real clock, sleeps, casts, SQL or hand-set database role. Every catch is logged once to `catches.jsonl`, which is your record of what the rules actually stop.
 
 Rules are read from three files, in this order. A later file adds rules and file groups, replaces one of the same name, or turns a rule off:
 
 | Covers | File |
 |---|---|
-| Every repository | `~/.proofsheet/rules.json` |
-| This repository, committed for everyone who works on it | `.proofsheet/rules.json`, as it is on the base branch |
-| This repository, only you | `~/.proofsheet/repos/<repository>/rules.json` |
+| Every repository | `~/.grisha/rules.json` |
+| This repository, committed for everyone who works on it | `.grisha/rules.json`, as it is on the base branch |
+| This repository, only you | `~/.grisha/repos/<repository>/rules.json` |
 
 A rule's `files` is a list of patterns, or the name of a file group. The starter set defines one group, `tests`, and nine rules apply to it. A repository whose tests live elsewhere says so once, and all nine follow:
 
@@ -247,21 +247,21 @@ A rule's `files` is a list of patterns, or the name of a file group. The starter
 A change to the rules does not take effect quietly. In the task above the agent turned the rule off for itself instead of deleting the comment:
 
 ```console
-$ proofsheet gate
+$ grisha gate
 Before this goes further:
 - The rules here are not the ones the person approved:
   no longer in force: no-new-comments
-  The person approves them by running `proofsheet rules --approve` in their own terminal.
+  The person approves them by running `grisha rules --approve` in their own terminal.
 (exit 1)
 ```
 
-That is what happens when either of your two files changes: every commit is blocked until you run `proofsheet rules --approve` in your own terminal. The committed file is read from the base branch, so a branch's edit to it changes nothing until it is merged, and the pull request is its review.
+That is what happens when either of your two files changes: every commit is blocked until you run `grisha rules --approve` in your own terminal. The committed file is read from the base branch, so a branch's edit to it changes nothing until it is merged, and the pull request is its review.
 
 ## Skills
 
 | Skill | Use |
 |---|---|
-| `proofsheet` | The loop above. |
+| `grisha` | The loop above. |
 | `create-verification-skill`, `maintain-verification-skill` | Give a repository a scripted way to drive the real app, and keep it honest. |
 | `create-formal-verification-skill`, `maintain-formal-verification-skill`, `statechart` | Check a property in every case with a model checker or prover, and show the result as a chart. |
 | `blast-radius` | Find what a change could break elsewhere, and prove the one fact it is safe because of. |

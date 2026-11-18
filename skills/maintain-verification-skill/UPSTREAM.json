@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "folder": "pstack",
+  "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+  "license": "MIT, Copyright (c) 2026 Lauren Tan",
+  "sources": {
+    "skills/maintain-verification-skill/SKILL.md": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8"
+  },
+  "adaptation": "Looks for the verification skill in the person's proofsheet folder first; a pull request only when the skill lives in the repository."
+}

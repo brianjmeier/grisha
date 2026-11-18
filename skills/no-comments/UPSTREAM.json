@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "folder": "pstack",
+  "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+  "license": "MIT, Copyright (c) 2026 Lauren Tan",
+  "sources": {
+    "skills/no-comments/SKILL.md": "054a46f2662c725add02d9e0440d8dcb4351f3bd0afcf797acc22a501b527b54",
+    "agents/comment-sicko.md": "0fb37221ab2a9159714d38f1528898e82b9758b5750f244bbe2e575bb593a1de"
+  },
+  "adaptation": "The reviewer is a fresh subagent given references/comment-sicko.md, not a named Cursor agent; references to pstack's poteto-mode, architect, why and principle skills replaced with the step itself."
+}

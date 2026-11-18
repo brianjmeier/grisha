@@ -1,0 +1,10 @@
+{
+  "name": "proofsheet",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "bin": { "proofsheet": "bin/proofsheet.ts" },
+  "scripts": { "test": "bun test", "check": "bunx tsc --noEmit", "upstream": "bun scripts/upstream.ts" },
+  "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^5.9.0" }
+}

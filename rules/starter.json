@@ -1,0 +1,97 @@
+{
+  "files": {
+    "tests": ["**/*.test.*", "**/*.spec.*"]
+  },
+  "rules": [
+    {
+      "name": "no-new-comments",
+      "pattern": "^\\s*(//(?!\\s*(@ts-|eslint-|biome-))|/\\*|\\{/\\*)",
+      "files": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.rs"],
+      "fix": "Delete the comment. If it explains a workaround, fix what it works around; if it states a constraint, turn the constraint into a type, a test or a check."
+    },
+    {
+      "name": "no-new-effects",
+      "pattern": "\\buseEffect\\s*\\(",
+      "files": ["**/*.tsx", "**/*.jsx"],
+      "fix": "Compute the value while rendering, or move the work to where the data is loaded. Effects belong in shared hooks, not in product components."
+    },
+    {
+      "name": "no-new-timers",
+      "pattern": "\\bset(Timeout|Interval)\\s*\\(",
+      "files": ["**/*.tsx", "**/*.jsx"],
+      "fix": "A timer in a component hides an ordering problem. Find what the code is waiting for and wait for that."
+    },
+    {
+      "name": "no-new-suppressions",
+      "pattern": "@ts-ignore|@ts-expect-error|eslint-disable|biome-ignore",
+      "files": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+      "fix": "Fix what the checker reports instead of silencing it."
+    },
+    {
+      "name": "no-optional-clock",
+      "pattern": "\\?\\?\\s*Date\\.now\\b|\\b(now|timers|clock)\\?\\s*:",
+      "files": ["**/*.ts", "**/*.tsx"],
+      "fix": "Make it a required parameter and pass the real one where the program starts. An optional clock is the real clock for every caller that forgets it."
+    },
+    {
+      "name": "no-reading-error-text",
+      "pattern": "\\b(e|err|error)\\??\\.message\\??\\.(includes|startsWith|endsWith|match|indexOf|search)\\(|\\.test\\((e|err|error)\\??\\.message\\)",
+      "files": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+      "fix": "Give the error a code or a type where it is raised, and branch on that. Matching on wording breaks the day the message improves."
+    },
+    {
+      "name": "no-skipped-tests",
+      "pattern": "\\b(describe|it|test)\\.(skip|only)\\(|\\bx(it|describe)\\(",
+      "files": "tests",
+      "fix": "Make the test pass or delete it. A skipped test proves nothing."
+    },
+    {
+      "name": "no-module-mocks",
+      "pattern": "\\b(mock\\.module|jest\\.mock|vi\\.mock)\\s*\\(",
+      "files": "tests",
+      "fix": "Pass the code a fake through a parameter, the way production passes it the real thing. If the code cannot take one, change it so it can."
+    },
+    {
+      "name": "no-spies",
+      "pattern": "\\bspyOn\\s*\\(|\\b(vi|jest)\\.fn\\s*\\(|\\bmock\\s*\\(|\\.toHaveBeenCalled",
+      "files": "tests",
+      "fix": "Assert what comes back through the interface: a result, a state, a row you can read back. Which calls were made is not something a caller can see."
+    },
+    {
+      "name": "no-fake-timers",
+      "pattern": "\\buseFakeTimers\\b|\\bsetSystemTime\\b|\\bglobalThis\\.\\w+\\s*=(?!=)",
+      "files": "tests",
+      "fix": "Pass the code a clock the test controls, and move that clock yourself. Patching a global changes it for every other test too."
+    },
+    {
+      "name": "no-wall-clock-in-tests",
+      "pattern": "\\bDate\\.now\\(\\)|\\bnew Date\\(\\)|\\bperformance\\.now\\(\\)",
+      "files": "tests",
+      "fix": "Start the test's clock at a fixed instant and state every time relative to it. A test that reads the real clock passes until a date goes by."
+    },
+    {
+      "name": "no-sleeps-in-tests",
+      "pattern": "\\bBun\\.sleep\\s*\\(|(?<![.\\w])setTimeout\\s*\\(",
+      "files": "tests",
+      "fix": "Wait for the thing itself, or advance a clock the test controls. A sleep is slow and still races."
+    },
+    {
+      "name": "no-casts-in-tests",
+      "pattern": "\\bas (any|unknown as)\\b",
+      "files": "tests",
+      "fix": "Build the value with a factory so it type-checks. A cast hides the mistake the test is there to catch."
+    },
+    {
+      "name": "no-sql-in-tests",
+      "pattern": "\\bsql`|\\bsql\\.raw\\b|\\bCompiledQuery\\.raw\\b",
+      "files": "tests",
+      "fix": "Build and read state through a factory or the code's own interface. If neither can express it, extend the factory."
+    },
+    {
+      "name": "no-hand-set-role",
+      "pattern": "set local role|SET LOCAL ROLE|request\\.jwt\\.claims",
+      "files": "tests",
+      "fix": "Make the request as that user, so the app's own role switch runs. A test that sets the role itself proves only its own copy of the switch."
+    }
+  ]
+}

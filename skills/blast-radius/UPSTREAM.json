@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "folder": "pstack",
+  "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+  "license": "MIT, Copyright (c) 2026 Lauren Tan",
+  "sources": {
+    "skills/blast-radius/SKILL.md": "4248d03e22365207d2e5f90c9542720f80a88a6b42fd542ef88dde3cf9f9223f"
+  },
+  "adaptation": "References to pstack's how, why, arena and unslop skills removed; they are not part of this project."
+}

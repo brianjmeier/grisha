@@ -52,12 +52,12 @@ exec proofsheet gate --final
 
 An agent can skip git hooks with `--no-verify`, and they do not see `proofsheet approve`. If the folder printed above is one the repository tracks (husky does this), a file added there would be shared with everyone, so use the app's own hook instead.
 
-**Claude Code.** `proofsheet hook` is `gate --for` in Claude Code's `PreToolUse` shape. The agent cannot skip it.
+**Claude Code.** `proofsheet hook` is `gate --for` in Claude Code's `PreToolUse` shape. The agent cannot skip it. When it cannot read its input or git fails under it, it refuses the command and says why. The `|| exit 2` covers the case it cannot handle itself: if `proofsheet` is missing or crashes, Claude Code would otherwise let the command through, and exit 2 is the code it treats as a refusal.
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "proofsheet hook" }] }]
+    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "proofsheet hook || exit 2" }] }]
   }
 }
 ```

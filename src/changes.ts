@@ -1,4 +1,4 @@
-import { join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { lines } from "./text"
 import type { World } from "./world"
 
@@ -15,31 +15,63 @@ export function matches(path: string, patterns: string[]): boolean {
   })
 }
 
-export function baseOf(world: World, wanted?: string): string {
+type Git = Pick<World, "git">
+
+export class GitProblem extends Error {}
+
+function git(world: Git, args: string[]): string {
+  const ran = world.git(args)
+  if (ran.code !== 0) throw new GitProblem(`git ${args.join(" ")} failed:\n${ran.out.trim()}`)
+  return ran.out
+}
+
+export function checkout(world: Git): { root: string; gitDir: string; name: string } | null {
+  const found = world.git(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--path-format=absolute", "--git-common-dir"])
+  if (found.code !== 0) return null
+  const [root = "", gitDir = "", shared = ""] = lines(found.out)
+  const origin = world.git(["remote", "get-url", "origin"])
+  const name = origin.code === 0 ? origin.out.trim().replace(/\.git$/, "").split(/[/:]/).slice(-2).join("-") : basename(dirname(shared))
+  return { root, gitDir, name }
+}
+
+export function baseOf(world: Git, wanted?: string): string {
   for (const ref of wanted ? [wanted] : ["origin/HEAD", "origin/main", "main", "master"]) {
     const merged = world.git(["merge-base", "HEAD", ref])
     if (merged.code === 0) return merged.out.trim()
   }
+  if (wanted) throw new GitProblem(`No branch or commit called "${wanted}" shares history with this one. --base takes the branch this one started from.`)
   return world.git(["rev-parse", "--verify", "--quiet", "HEAD"]).code === 0 ? "HEAD" : EMPTY_TREE
 }
 
-const untracked = (world: World) => lines(world.git(["ls-files", "--others", "--exclude-standard", "--full-name", ":/"]).out)
-
-export function everyFile(world: World): string[] {
-  return [...lines(world.git(["ls-files", "--full-name", ":/"]).out), ...untracked(world)]
+export function committed(world: Git, base: string, path: string): string | null {
+  const shown = world.git(["show", `${base}:${path}`])
+  return shown.code === 0 ? shown.out : null
 }
 
-export function changedFiles(world: World, base: string): string[] {
-  return [...lines(world.git(["diff", "--name-only", base, "--", ":/"]).out), ...untracked(world)]
+export function fetched(world: Git, repository: string): string {
+  git(world, ["fetch", "--quiet", repository, "HEAD"])
+  return git(world, ["rev-parse", "FETCH_HEAD"]).trim()
 }
 
-export function addedLines(world: World, root: string, base: string, wanted: string[]): Added[] {
+export const filesAt = (world: Git, commit: string, folder: string) => lines(git(world, ["ls-tree", "-r", "--name-only", "--full-tree", commit, "--", folder]))
+
+const untracked = (world: Git) => lines(git(world, ["ls-files", "--others", "--exclude-standard", "--full-name", ":/"]))
+
+export function everyFile(world: Git): string[] {
+  return [...lines(git(world, ["ls-files", "--full-name", ":/"])), ...untracked(world)]
+}
+
+export function changedFiles(world: Git, base: string): string[] {
+  return [...lines(git(world, ["diff", "--name-only", base, "--", ":/"])), ...untracked(world)]
+}
+
+export function addedLines(world: Git & Pick<World, "read">, root: string, base: string, wanted: string[]): Added[] {
   const added: Added[] = []
   let file = ""
   let line = 0
   let header = true
   let keep = false
-  for (const row of world.git(["diff", "--unified=0", "--no-color", "--no-ext-diff", base, "--", ":/"]).out.split("\n")) {
+  for (const row of git(world, ["diff", "--unified=0", "--no-color", "--no-ext-diff", base, "--", ":/"]).split("\n")) {
     if (row.startsWith("diff --git ")) header = true
     else if (header && row.startsWith("+++ ")) {
       file = row.slice(4).replace(/^b\//, "")

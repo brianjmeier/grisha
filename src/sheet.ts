@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
-import { basename, dirname, join } from "node:path"
-import { changedFiles, everyFile, matches } from "./changes"
+import { join } from "node:path"
+import { changedFiles, checkout, everyFile, matches } from "./changes"
 import { isText, labelled, lines } from "./text"
 import type { World } from "./world"
 
@@ -52,13 +52,11 @@ const taskDir = (here: Place, name: string) => join(here.home, "tasks", name)
 const planHash = (sheet: Sheet) => sha(JSON.stringify(sheet))
 const pathsOf = (sheet: Sheet, boxes: string[]) => sheet.boxes.filter((box) => boxes.includes(box.name)).flatMap((box) => box.paths)
 
+export const APPROVE_HINT = "The person approves it by running `proofsheet approve` in their own terminal."
+
 export function place(world: World): Place | null {
-  const found = world.git(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--path-format=absolute", "--git-common-dir"])
-  if (found.code !== 0) return null
-  const [root = "", gitDir = "", shared = ""] = lines(found.out)
-  const origin = world.git(["remote", "get-url", "origin"])
-  const name = origin.code === 0 ? origin.out.trim().replace(/\.git$/, "").split(/[/:]/).slice(-2).join("-") : basename(dirname(shared))
-  return { root, home: join(world.home, "repos", name.replace(/[^A-Za-z0-9._-]/g, "-")), pointer: join(gitDir, "proofsheet-task") }
+  const found = checkout(world)
+  return found && { root: found.root, home: join(world.home, "repos", found.name.replace(/[^A-Za-z0-9._-]/g, "-")), pointer: join(found.gitDir, "proofsheet-task") }
 }
 
 function parseSheet(text: string): Sheet | string[] {
@@ -175,7 +173,6 @@ export function runCheck(world: World, here: Place, task: Task, { unit, claim, r
   const evidence = join(task.dir, "evidence", `${claim.id}-${task.runs.filter((earlier) => earlier.claim === claim.id).length + 1}.txt`)
   world.write(evidence, ran.out)
   const record = { claim: claim.id, run, at: world.now().toISOString(), exit: ran.code, fingerprint: fingerprinter(world, here.root, task.sheet)(unit, claim), evidence }
-  task.runs.push(record)
   world.append(join(task.dir, "runs.jsonl"), `${JSON.stringify(record)}\n`)
   return record
 }

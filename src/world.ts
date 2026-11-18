@@ -6,7 +6,8 @@ type Ran = { code: number; out: string }
 export type World = {
   home: string
   now: () => Date
-  confirm: (plan: string) => Promise<"yes" | "no" | "unavailable">
+  hostApproves: boolean
+  ask: ((question: string) => Promise<string>) | null
   input: () => string
   print: (text: string) => void
   read: (path: string) => string | null
@@ -16,10 +17,9 @@ export type World = {
   sh: (command: string, cwd: string) => Ran
 }
 
-export function realWorld(cwd: string, given: Pick<World, "home" | "now" | "confirm" | "input">): World {
+export function realIO(cwd: string): Pick<World, "print" | "read" | "write" | "append" | "git" | "sh"> {
   const prepare = (path: string) => mkdirSync(dirname(path), { recursive: true })
   return {
-    ...given,
     print: (text) => console.log(text),
     read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : null),
     write: (path, text) => {

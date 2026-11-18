@@ -3,10 +3,11 @@ import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
+import { session } from "../scripts/session"
 import { upstream } from "../scripts/upstream"
 import { main } from "../src/main"
 import { lines } from "../src/text"
-import { realWorld, type World } from "../src/world"
+import { realIO, type World } from "../src/world"
 
 const temp = (name: string) => realpathSync(mkdtempSync(join(tmpdir(), `proofsheet-${name}-`)))
 
@@ -47,7 +48,12 @@ function scene(cwd?: string) {
   const run = async (args: string[], given: Partial<World> = {}) => {
     const printed: string[] = []
     const world: World = {
-      ...realWorld(root, { home, now: () => new Date("2026-11-17T12:00:00Z"), confirm: async () => "yes", input: () => "" }),
+      ...realIO(root),
+      home,
+      now: () => new Date("2026-11-17T12:00:00Z"),
+      hostApproves: false,
+      ask: async () => "yes",
+      input: () => "",
       print: (text) => printed.push(text),
       ...given,
     }
@@ -86,8 +92,8 @@ test("a sheet that names a missing box says which box and which exist", async ()
 test("only the person approves, and a changed plan needs approving again", async () => {
   const { run, plan, sheetPath } = scene()
   await plan()
-  expect((await run(["approve"], { confirm: async () => "unavailable" })).out).toContain("in their own terminal")
-  expect((await run(["approve"], { confirm: async () => "no" })).out).toContain("Not approved.")
+  expect((await run(["approve"], { ask: null })).out).toContain("in their own terminal")
+  expect((await run(["approve"], { ask: async () => "y" })).out).toContain("Not approved.")
   expect((await run(["approve"])).out).toContain("Approved.")
   writeFileSync(sheetPath(), JSON.stringify({ ...SHEET, task: "Count unread and starred rows" }))
   expect((await run(["show"])).out).toContain("plan changed since it was approved")
@@ -276,10 +282,10 @@ test("a change to your rules blocks until you approve it, once for every reposit
   expect(gated.out).toContain("  →  ^//")
   expect((await other.run(["gate"], { home })).code).toBe(1)
 
-  expect((await run(["rules", "--approve"], { confirm: async () => "unavailable" })).out).toContain("in their own terminal")
+  expect((await run(["rules", "--approve"], { ask: null })).out).toContain("in their own terminal")
   expect((await run(["gate", "--for", "PROOFSHEET_HOST_APPROVES=1 proofsheet rules --approve"])).code).toBe(1)
   const asked: string[] = []
-  await run(["rules", "--approve"], { confirm: async (shown) => (asked.push(shown), "yes") })
+  await run(["rules", "--approve"], { ask: async (shown) => (asked.push(shown), "yes") })
   expect(asked.join()).toContain("no longer in force: no-spies")
   expect((await run(["gate"])).code).toBe(0)
   expect((await other.run(["gate"], { home })).code).toBe(0)
@@ -312,6 +318,58 @@ test("a branch cannot loosen the repository's committed rules for itself", async
   git("checkout", "-q", "main")
   git("merge", "-q", "work")
   expect((await run(["gate"])).code).toBe(0)
+})
+
+test("a host's approve button approves without a terminal, and only a typed yes approves in one", async () => {
+  const { run, plan } = scene()
+  await plan()
+  expect((await run(["approve"], { ask: null, hostApproves: true })).out).toContain("Approved.")
+  await plan({ ...SHEET, task: "Count only unread rows, again" })
+  const questions: string[] = []
+  expect((await run(["approve"], { ask: async (question) => (questions.push(question), " YES\n") })).out).toContain("Approved.")
+  expect(questions.join()).toContain("counts-unread")
+  expect(questions.join()).toContain("Type yes")
+})
+
+test("a base that does not exist, or a git command that fails, is reported and never read as a result", async () => {
+  const { run, plan, put, root } = scene()
+  const typo = await run(["gate", "--base", "mian"])
+  expect(typo.code).toBe(1)
+  expect(typo.out).toContain('No branch or commit called "mian"')
+
+  await plan()
+  put("src/other/new.ts", "export const two = 2\n")
+  const real = realIO(root).git
+  const broken = await run(["outside"], { git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: bad object" } : real(args)) })
+  expect(broken.code).toBe(1)
+  expect(broken.out).toContain("git diff --name-only")
+  expect(broken.out).toContain("fatal: bad object")
+  expect(broken.out).not.toContain("Changed, but in no planned box")
+})
+
+test("a hook that cannot read its input, or cannot ask git, refuses the command", async () => {
+  const { run, root } = scene()
+  for (const input of ["not json", "", "\n"]) {
+    const answered = await run(["hook"], { input: () => input })
+    expect(answered.code).toBe(0)
+    expect(JSON.parse(answered.out).hookSpecificOutput.permissionDecision).toBe("deny")
+  }
+  await run(["rules", "--init"])
+  const real = realIO(root).git
+  const commit = () => JSON.stringify({ tool_name: "Bash", tool_input: { command: "git commit -m wip" } })
+  const noGit = await run(["hook"], { input: commit, git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: index file corrupt" } : real(args)) })
+  expect(JSON.parse(noGit.out).hookSpecificOutput.permissionDecisionReason).toContain("index file corrupt")
+  expect((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Read", tool_input: { file_path: "a" } }) })).out).toBe("")
+})
+
+test("a refusal at the gate is logged once, however often the gate is asked", async () => {
+  const { run, put } = scene()
+  await run(["rules", "--init"])
+  put("src/app/New.tsx", "useEffect(() => {})\n")
+  const log = join((await run(["home"])).out, "catches.jsonl")
+  await run(["gate"])
+  await run(["gate"])
+  expect(lines(readFileSync(log, "utf8")).map((line) => JSON.parse(line).rule)).toEqual(["no-new-effects"])
 })
 
 test("a commit is blocked by what failed, a push also by what was never run", async () => {
@@ -413,7 +471,7 @@ function port() {
   ours.put("skills/demo/UPSTREAM.json", JSON.stringify({ repository: theirs.root, folder: "pstack", commit: publish("skills"), sources, skipped: ["skills/demo/corpus"] }))
   const check = () => {
     const printed: string[] = []
-    const world = realWorld(ours.root, { home: "", now: () => new Date("2026-11-17T12:00:00Z"), confirm: async () => "no", input: () => "" })
+    const world = realIO(ours.root)
     return { code: upstream({ ...world, print: (text) => printed.push(text) }), out: printed.join("\n") }
   }
   return { theirs, publish, check }
@@ -492,4 +550,22 @@ test("every starter rule catches the line it is for and lets the line beside it 
   expect(caught.sort()).toEqual(expected.sort())
   const starter: { name: string }[] = JSON.parse(readFileSync(join(import.meta.dir, "..", "rules", "starter.json"), "utf8")).rules
   expect(starter.map((rule) => rule.name).filter((name) => !rows.some(([, , rule]) => rule === name))).toEqual([])
+})
+
+test("every output the README quotes is what the command prints", async () => {
+  const printed = await session(() => new Date("2026-11-18T12:00:00Z"))
+  const readme = readFileSync(join(import.meta.dir, "..", "README.md"), "utf8")
+  const quoted = [...readme.matchAll(/```(console|json)\n([\s\S]*?)\n```/g)].filter(([, kind, body = ""]) => kind === "console" || body.includes('"units"'))
+  expect(quoted.length).toBeGreaterThan(8)
+  const wrong = quoted.flatMap(([, , body = ""]) => {
+    let from = 0
+    return body.split(/^…$/m).flatMap((part) => {
+      const piece = part.trim()
+      const at = printed.indexOf(piece, from)
+      if (at === -1) return [piece]
+      from = at + piece.length
+      return []
+    })
+  })
+  expect(wrong).toEqual([])
 })

@@ -1,5 +1,5 @@
 import { join } from "node:path"
-import { addedLines, matches, type Added } from "./changes"
+import { addedLines, committed, matches, type Added } from "./changes"
 import { isText, labelled, lines } from "./text"
 import type { World } from "./world"
 
@@ -23,8 +23,7 @@ export function ruleFiles(world: World, here: Checkout, base: string) {
     const approved = join(folder, "rules.approved.json")
     return { covers, path, text: world.read(path), approved: world.read(approved), approvedAt: approved, waits: false }
   }
-  const merged = world.git(["show", `${base}:${COMMITTED}`])
-  const text = merged.code === 0 ? merged.out : null
+  const text = committed(world, base, COMMITTED)
   const path = join(here.root, COMMITTED)
   return [
     yours("every repository", world.home),
@@ -121,7 +120,7 @@ function catches(rules: Rule[], added: Added[]): Catch[] {
   })
 }
 
-function record(world: World, home: string, caught: Catch[]): void {
+export function recordCatches(world: World, home: string, caught: Catch[]): void {
   if (caught.length === 0) return
   const log = join(home, "catches.jsonl")
   const known = new Set(lines(world.read(log) ?? "").map((line) => JSON.parse(line).key))
@@ -133,13 +132,12 @@ function record(world: World, home: string, caught: Catch[]): void {
   }
 }
 
-export function brokenRules(world: World, here: Checkout, base: string, files: Files = ruleFiles(world, here, base)): string[] {
+export function brokenRules(world: World, here: Checkout, base: string, files: Files = ruleFiles(world, here, base)): { broken: string[]; caught: Catch[] } {
   const loaded = loadRules(files)
-  if (loaded.problems.length > 0) return loaded.problems
+  if (loaded.problems.length > 0) return { broken: loaded.problems, caught: [] }
   const unapproved = unapprovedRules(files, loaded)
   const drift = unapproved.length > 0 ? [["The rules here are not the ones the person approved:", ...unapproved, RULES_APPROVE_HINT].join("\n  ")] : []
-  if (loaded.rules.length === 0) return drift
+  if (loaded.rules.length === 0) return { broken: drift, caught: [] }
   const caught = catches(loaded.rules, addedLines(world, here.root, base, loaded.rules.flatMap((rule) => rule.files)))
-  record(world, here.home, caught)
-  return [...drift, ...caught.map((one) => `${one.file}:${one.line}  ${one.rule}\n  + ${one.text.trim()}\n  ${one.fix}`)]
+  return { broken: [...drift, ...caught.map((one) => `${one.file}:${one.line}  ${one.rule}\n  + ${one.text.trim()}\n  ${one.fix}`)], caught }
 }

@@ -1,10 +1,11 @@
 import { join } from "node:path"
 import { parseArgs } from "node:util"
-import { baseOf } from "./changes"
+import { baseOf, GitProblem } from "./changes"
 import { bashCommand, deny } from "./claude-code"
+import { APPROVAL_IS_THE_PERSONS, blockers, momentOf } from "./gate"
 import { asMermaid, asPullRequest, asText } from "./render"
-import { approveRules, brokenRules, loadRules, ruleFiles, RULES_APPROVE_HINT, unapprovedRules } from "./rules"
-import { approve, blocking, currentTask, outsidePlan, place, runCheck, runnable, startTask, view, type Broken, type Moment, type Place, type Task } from "./sheet"
+import { approveRules, brokenRules, loadRules, recordCatches, ruleFiles, RULES_APPROVE_HINT, unapprovedRules } from "./rules"
+import { approve, APPROVE_HINT, currentTask, outsidePlan, place, runCheck, runnable, startTask, view } from "./sheet"
 import type { World } from "./world"
 
 const STARTER_RULES = join(import.meta.dir, "..", "rules", "starter.json")
@@ -35,7 +36,6 @@ const OPTIONS = {
   help: { type: "boolean" },
 } as const
 
-const APPROVE_HINT = "The person approves it by running `proofsheet approve` in their own terminal."
 const NOT_A_REPOSITORY = "Not inside a git repository. Run proofsheet from the checkout you are working in."
 
 function parse(argv: string[]) {
@@ -46,36 +46,42 @@ function parse(argv: string[]) {
   }
 }
 
-function momentOf(command: string): "approve" | Moment | null {
-  if (/\bproofsheet(\.ts)?\s+(approve\b|rules\s.*--approve\b)/.test(command)) return "approve"
-  if (/\bgit\s+push\b|\bgh\s+pr\s+create\b/.test(command)) return "push"
-  if (/\bgit\s+commit\b/.test(command)) return "commit"
-  return null
-}
-
-function blockers(world: World, here: Place, task: Task | Broken | null, base: () => string, at: Moment): string[] {
-  const todo: string[] = []
-  if (task && "problems" in task) todo.push(...task.problems)
-  else if (task) {
-    if (task.approval !== "approved") todo.push(`The plan is ${task.approval}. ${APPROVE_HINT}`)
-    if (at === "push" && task.sheet.units.length === 0) todo.push("The sheet has no units, so nothing is claimed.")
-    todo.push(...blocking(view(world, here, task), at))
-  }
-  return [...todo, ...brokenRules(world, here, base())]
+async function confirm(world: World, shown: string): Promise<"yes" | "no" | "unavailable"> {
+  if (world.hostApproves) return "yes"
+  if (!world.ask) return "unavailable"
+  return (await world.ask(`${shown}\n\nApprove this? Type yes: `)).trim().toLowerCase() === "yes" ? "yes" : "no"
 }
 
 export async function main(argv: string[], world: World): Promise<number> {
-  const answer =
+  try {
+    return await answer(argv, world)
+  } catch (error) {
+    const problem = error instanceof Error ? error.message : String(error)
+    if (argv[0] === "hook") {
+      world.print(deny(`proofsheet could not check this command, so it is refused.\n${problem}`))
+      return 0
+    }
+    if (!(error instanceof GitProblem)) throw error
+    world.print(problem)
+    return 1
+  }
+}
+
+async function answer(argv: string[], world: World): Promise<number> {
+  const reply =
     (code: number) =>
     (...rows: string[]) => {
       world.print(rows.join("\n"))
       return code
     }
-  const say = answer(0)
-  const fail = answer(1)
+  const say = reply(0)
+  const fail = reply(1)
 
   const asked = parse(argv)
-  if (typeof asked === "string") return fail(asked, "", USAGE)
+  if (typeof asked === "string") {
+    if (argv[0] === "hook") throw new Error(asked)
+    return fail(asked, "", USAGE)
+  }
   const [command, ...words] = asked.positionals
   const flags = asked.values
   if (!command || command === "help" || flags.help) return say(USAGE)
@@ -88,7 +94,7 @@ export async function main(argv: string[], world: World): Promise<number> {
     const here = place(world)
     if (!here) return about === undefined ? fail(NOT_A_REPOSITORY) : 0
     const task = currentTask(world, here)
-    const todo = when === "approve" ? ["Approval belongs to the person, who runs this in their own terminal."] : blockers(world, here, task, base, when)
+    const todo = when === "approve" ? [APPROVAL_IS_THE_PERSONS] : blockers(world, here, task, base(), when)
     if (command === "hook") return todo.length > 0 ? say(deny(todo.join("\n"))) : 0
     if (todo.length > 0) return fail("Before this goes further:", ...todo.map((line) => `- ${line}`))
     return say(task ? "Nothing blocks." : "No task is started in this checkout, so only the rules were checked. Nothing blocks.")
@@ -124,7 +130,7 @@ export async function main(argv: string[], world: World): Promise<number> {
     if (flags.approve) {
       const unapproved = unapprovedRules(files)
       if (unapproved.length === 0) return say("The rules here are the ones already approved.")
-      const answered = await world.confirm(["Rules that differ from the ones you approved:", ...unapproved.map((row) => `  ${row}`)].join("\n"))
+      const answered = await confirm(world, ["Rules that differ from the ones you approved:", ...unapproved.map((row) => `  ${row}`)].join("\n"))
       if (answered === "unavailable") return fail(RULES_APPROVE_HINT)
       if (answered === "no") return fail("Not approved.")
       approveRules(world, files)
@@ -133,7 +139,8 @@ export async function main(argv: string[], world: World): Promise<number> {
     if (files.every((file) => file.text === null && !file.approved)) return say(`No rules yet. \`proofsheet rules --init\` writes a starter set to ${yours?.path}.`, ...read)
     const groups = [...loadRules(files).groups].map(([name, patterns]) => `  ${name}  ${patterns.join("  ")}`)
     const where = groups.length > 0 ? [...read, "", "File groups a rule can apply to. A later file replaces a group by name:", ...groups] : read
-    const broken = brokenRules(world, here, base(), files)
+    const { broken, caught } = brokenRules(world, here, base(), files)
+    recordCatches(world, here.home, caught)
     return broken.length > 0 ? fail(...broken, ...where) : say("No rule is broken by the lines this branch adds.", ...where)
   }
 
@@ -149,7 +156,7 @@ export async function main(argv: string[], world: World): Promise<number> {
   }
   if (command === "approve") {
     if (task.sheet.units.length === 0) return fail("Nothing to approve: the sheet has no units yet.")
-    const answered = await world.confirm(asText(seen()))
+    const answered = await confirm(world, asText(seen()))
     if (answered === "unavailable") return fail(APPROVE_HINT)
     if (answered === "no") return fail("Not approved.")
     approve(world, task)
@@ -160,13 +167,9 @@ export async function main(argv: string[], world: World): Promise<number> {
     const all = runnable(task.sheet)
     const unknown = words.filter((id) => !all.some((one) => one.claim.id === id))
     if (unknown.length > 0) return fail(`No runnable claim called ${unknown.join(", ")}. Runnable: ${all.map((one) => one.claim.id).join(", ") || "none"}.`)
-    const rows = all
-      .filter((one) => words.length === 0 || words.includes(one.claim.id))
-      .map((one) => {
-        const ran = runCheck(world, here, task, one)
-        return `${one.claim.id}: ${ran.exit === 0 ? "passed" : `failed (exit ${ran.exit})`}    ${ran.evidence}`
-      })
-    return say(...rows, "", asText(seen()))
+    const ran = all.filter((one) => words.length === 0 || words.includes(one.claim.id)).map((one) => runCheck(world, here, task, one))
+    const rows = ran.map((one) => `${one.claim}: ${one.exit === 0 ? "passed" : `failed (exit ${one.exit})`}    ${one.evidence}`)
+    return say(...rows, "", asText(view(world, here, { ...task, runs: [...task.runs, ...ran] })))
   }
   if (command === "outside") {
     const outside = outsidePlan(world, task, base())

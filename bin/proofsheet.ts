@@ -4,20 +4,24 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { createInterface } from "node:readline/promises"
 import { main } from "../src/main"
-import { realWorld } from "../src/world"
+import { realIO } from "../src/world"
 
-const world = realWorld(process.cwd(), {
-  home: process.env.PROOFSHEET_HOME ?? join(homedir(), ".proofsheet"),
-  now: () => new Date(),
-  input: () => (process.stdin.isTTY ? "" : readFileSync(0, "utf8")),
-  confirm: async (shown) => {
-    if (process.env.PROOFSHEET_HOST_APPROVES === "1") return "yes"
-    if (!process.stdin.isTTY) return "unavailable"
-    const terminal = createInterface({ input: process.stdin, output: process.stdout })
-    const answer = await terminal.question(`${shown}\n\nApprove this? Type yes: `)
-    terminal.close()
-    return answer.trim().toLowerCase() === "yes" ? "yes" : "no"
-  },
-})
+const inTerminal = process.stdin.isTTY
 
-process.exit(await main(process.argv.slice(2), world))
+async function ask(question: string): Promise<string> {
+  const terminal = createInterface({ input: process.stdin, output: process.stdout })
+  const answer = await terminal.question(question)
+  terminal.close()
+  return answer
+}
+
+process.exit(
+  await main(process.argv.slice(2), {
+    ...realIO(process.cwd()),
+    home: process.env.PROOFSHEET_HOME ?? join(homedir(), ".proofsheet"),
+    now: () => new Date(),
+    input: () => (inTerminal ? "" : readFileSync(0, "utf8")),
+    hostApproves: process.env.PROOFSHEET_HOST_APPROVES === "1",
+    ask: inTerminal ? ask : null,
+  }),
+)

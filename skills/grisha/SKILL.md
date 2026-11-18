@@ -5,69 +5,41 @@ description: Plan and build a task so every claim about it has a check that was 
 
 # Grisha
 
-Grisha keeps one sheet per task. The sheet lists the modules the task touches (boxes), the build steps in order (units), and each unit's claims: what the step proves, and what it keeps true elsewhere.
+Grisha keeps one sheet per task: the modules the task touches (boxes), the build steps in order (units), and each unit's claims. You write the plan. Only the `grisha` command says where a claim stands, because it runs each check itself.
 
-You write the plan. Only the `grisha` command says where a claim stands, because it runs each check itself. A claim is never proven because you say so, so quote `grisha show` instead of describing progress from memory.
+## The loop
 
-## 1. Write the claims, then the map
+1. `grisha start "<task>"` prints the sheet's path and the shape to write.
+2. `grisha next` names the one thing to do now. Do it, and run `grisha next` again.
+3. Stop when it exits 0. Then `grisha pr` prints the proof for the pull request body.
 
-`grisha start "Count only unread rows"` answers with the sheet's path. Write into it:
+Every refusal from `grisha` says what to do about it. Do that instead of working around it. Quote `grisha show` when you report progress; never describe it from memory.
 
-```json
-{
-  "task": "Count only unread rows",
-  "boxes": [
-    { "name": "inbox/count", "paths": ["src/inbox/**", "test/inbox.test.sh"], "calls": ["inbox/store"] },
-    { "name": "inbox/store", "paths": ["src/store/**"] }
-  ],
-  "units": [
-    {
-      "name": "count unread rows",
-      "kind": "change",
-      "touches": ["inbox/count"],
-      "claims": [
-        { "id": "counts-unread", "says": "the badge shows the number of unread rows", "role": "proves",
-          "check": { "how": "script", "run": "sh test/inbox.test.sh" } },
-        { "id": "other-tenants", "says": "another tenant's rows never count", "role": "keeps", "check": null }
-      ]
-    }
-  ]
-}
-```
+## Writing the plan
 
-- **Claims first.** Before choosing files, say what must be true after (`proves`) and what must stay true elsewhere (`keeps`). In tightly coupled code most claims are `keeps`. A claim about a box its unit does not change lists that box in `"about": ["inbox/store"]`, so it goes stale when that box changes.
-- **A box is a module**, named as the person would name it. Its `paths` include the files of its checks, so a weakened test makes its claims stale. `calls` names the boxes it calls, for the drawn map.
-- **Unit kinds.** `pin` records today's behaviour in a test before anything moves. A pin that fails on today's code is a wrong pin: fix the pin, not the code, and make any bug it uncovers a unit of its own. `reshape` moves code while the pin keeps passing. `change` alters behaviour. When a claim cannot be checked until the code is reshaped, the pin and the reshape are the first units of the same branch.
-- **`how`** is `script`, `test`, `drive app`, `model` or `person reads`. Prefer a script or test. Drive the real app when the claim is about what a user sees. `run` is a command, run from the repository root. `person reads` has no `run` and is for what no command can settle. `null` means undecided, and it blocks the push.
+- **Claims first.** Before choosing files, say what must be true after (`proves`) and what must stay true elsewhere (`keeps`). In tightly coupled code most claims are `keeps`.
+- **A box is a module**, named as the person would name it. Its `paths` include the files of its checks, so a weakened test makes its claims stale.
+- **Pin before you move.** A `pin` unit records today's behaviour in a test. A pin that fails on today's code is a wrong pin: fix the pin, not the code, and make any bug it uncovers a unit of its own. When a claim cannot be checked until the code is reshaped, the pin and the `reshape` are the first units of the same branch.
+- **Prefer a script or test.** Drive the real app when the claim is about what a user sees. `person reads` is for what no command can settle.
 
-## 2. The person approves the plan
+Show the person `grisha show`, and `grisha show --mermaid` as a diagram where the chat draws Mermaid. Change the sheet as they ask. Write no product code before they approve. Every later edit to the sheet needs approval again: say which box or claim you need to add and why.
 
-Show them `grisha show`, and the output of `grisha show --mermaid` as a diagram where the chat draws Mermaid. Change the sheet as they ask. They approve it themselves. When you try, the answer is:
+`grisha approve` makes their agent app stop and ask them. If the answer is that nobody was asked, tell them to run it in a terminal, and wait.
 
-> The person approves it by running `grisha approve` in their own terminal.
+## Between the steps
 
-Write no product code before that. Every later edit to the sheet needs approval again, which is how a plan grows in the open: say which box or claim you need to add and why, then wait.
+- A check for new behaviour must fail for the reason the claim names, not for a typo or a missing import. Each run names a file holding the check's output; read it.
+- Write each test as a caller of the code would. [references/test-read.md](references/test-read.md) lists what a reader will send back.
+- Never edit a check to make it pass. If the claim was wrong, change the claim on the sheet.
+- Before committing a unit, have fresh subagents read it, one for each of [references/scope-read.md](references/scope-read.md), [references/design-read.md](references/design-read.md) and, when the unit adds or edits a test, [references/test-read.md](references/test-read.md). Each gets its file as its instructions, then the unit's claims and its uncommitted diff. Pass on what they find. Do not quietly remove or keep anything they name.
+- On a branch stacked on another, add `--base <parent branch>`.
 
-## 3. Build one unit at a time
+## Rules
 
-1. Write the unit's checks and run them: `grisha run counts-unread`. Write each test as a caller of the code would; [references/test-read.md](references/test-read.md) lists what a reader will send back. A check for new behaviour must read `[failing]`, and its output must show it fails for the reason the claim names, not for a typo or a missing import. A pin, or any check that reads `[passes, never seen failing]`, has not shown it can fail, and blocks the push until it has: break the code on purpose once, run it, restore the code and run it again.
-2. Make the change and run again until each reads `[proven]`. Each run names a file holding the check's output; read it when a check fails.
-3. Run `grisha show`. `[stale]` on a claim means you changed code it covers. Run that claim again.
-4. Have fresh subagents read the unit, one for each of [references/scope-read.md](references/scope-read.md), [references/design-read.md](references/design-read.md) and, when the unit adds or edits a test, [references/test-read.md](references/test-read.md). Each gets its file as its instructions, then the unit's claims and its uncommitted diff. Pass on what they find. Do not quietly remove or keep anything they name.
-5. Run `grisha gate`, clear what it lists, and commit the unit.
-
-Never edit a check to make it pass. If the claim was wrong, change the claim on the sheet and ask for approval.
-
-## 4. Hand over
-
-- `grisha gate --final` lists what still blocks a push.
-- `grisha outside` lists changed files that no box covers. Say why each one changed. On a branch stacked on another, add `--base <parent branch>`.
-- `grisha pr` prints the proof as a section for the pull request body.
+`grisha rules` checks the lines this branch adds and prints the files the rules come from; `grisha help rules` prints the format. When the person corrects the same thing a second time, propose a rule for it: in the repository's file when it is about this codebase, in their own when it holds everywhere. Say what you changed and why, then run `grisha rules --approve`, which shows them the change and asks. Never change a rule to get a line through.
 
 ## Where things live
 
 `grisha home` prints this repository's folder, outside the checkout. Its sheets and any `verify-*/` or `formal-*/` skill for it are there. Read `verify-*/SKILL.md` before writing a `drive app` check and `formal-*/SKILL.md` before a `model` check. If there is none, tell the person and offer the `create-verification-skill` or `create-formal-verification-skill` skill.
-
-`grisha rules` checks the lines this branch adds and prints the files the rules come from: the person's own, then the repository's. When the person corrects the same thing a second time, propose a rule for it: in the repository's file when it is about this codebase, in their own when it holds everywhere. A change to their rules blocks every commit until they approve it with `grisha rules --approve`, so say what you changed and why, then wait. Never edit a rule to get a line through.
 
 The `no-comments` and `blast-radius` skills can propose fixes of their own. Inside a task, each such fix is a new unit with its own claim, approved like any other.

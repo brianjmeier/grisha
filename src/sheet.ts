@@ -18,28 +18,39 @@ type Runnable = { unit: Unit; claim: Claim; run: string }
 
 export type Status = "no check" | "for you to read" | "not run" | "failing" | "stale" | "passes, never seen failing" | "proven"
 export type Approval = "not approved" | "changed since it was approved" | "approved"
-export type Moment = "commit" | "push"
+export type Bar = "nothing wrong" | "all proven"
 export type Place = { root: string; home: string; pointer: string }
 export type Task = { dir: string; sheet: Sheet; runs: Run[]; approval: Approval }
 export type Broken = { path: string; problems: string[] }
+type Seen = Claim & { status: Status; evidence?: string }
 export type View = {
   task: string
   approval: Approval
   boxes: Box[]
-  units: (Omit<Unit, "claims"> & { claims: (Claim & { status: Status })[] })[]
+  units: (Omit<Unit, "claims"> & { claims: Seen[] })[]
 }
 
-const rerun = (id: string) => `Run \`grisha run ${id}\`.`
+const each = (line: (claim: Seen) => string) => (claims: Seen[]) => claims.map(line)
+const together = (what: string, why: string) => (claims: Seen[]) => {
+  const ids = claims.map((claim) => claim.id)
+  return [`${ids.join(", ")} ${ids.length === 1 ? "is" : "are"} ${what}. Run \`grisha run ${ids.join(" ")}\`. ${why}`]
+}
 
-const BLOCKS: Record<Status, { at: Moment; fix: (id: string) => string } | null> = {
-  "no check": { at: "push", fix: (id) => `${id} has no check. Give it one, or set its check to { "how": "person reads" }.` },
+const BLOCKS: Record<Status, { at: Bar; fix: (claims: Seen[]) => string[] } | null> = {
+  "no check": {
+    at: "all proven",
+    fix: each(({ id }) => `${id} has no check. In the sheet, set its "check" to { "how": "script", "run": "<command>" }, or to { "how": "person reads" } when no command can settle it.`),
+  },
   "for you to read": null,
-  "not run": { at: "push", fix: (id) => `${id} is not run. ${rerun(id)}` },
-  failing: { at: "commit", fix: (id) => `${id} is failing. ${rerun(id)}` },
-  stale: { at: "commit", fix: (id) => `${id} is stale. ${rerun(id)}` },
+  "not run": { at: "all proven", fix: together("not run", "A check for new behaviour has to fail before the change is made.") },
+  failing: {
+    at: "nothing wrong",
+    fix: each(({ id, evidence }) => `${id} is failing. Its output is at ${evidence}. Make the code do what the claim says, then run \`grisha run ${id}\`.`),
+  },
+  stale: { at: "nothing wrong", fix: together("stale", "Code it covers changed after it last passed.") },
   "passes, never seen failing": {
-    at: "push",
-    fix: (id) => `${id} passes but was never seen failing. Break the code it covers, run \`grisha run ${id}\`, restore the code and run it again.`,
+    at: "all proven",
+    fix: each(({ id }) => `${id} passes but was never seen failing. Break the code it covers, run \`grisha run ${id}\`, restore the code and run it again.`),
   },
   proven: null,
 }
@@ -50,9 +61,12 @@ const oneOf = (options: readonly string[]) => options.map((option) => `"${option
 const slug = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60)
 const taskDir = (here: Place, name: string) => join(here.home, "tasks", name)
 const planHash = (sheet: Sheet) => sha(JSON.stringify(sheet))
+export const sheetOf = (task: Task) => join(task.dir, "sheet.json")
+export const sheetProblems = (broken: Broken) => [`Fix the sheet at ${broken.path}:`, ...broken.problems.map((problem) => `- ${problem}`), "`grisha help sheet` shows the shape."]
+export const noUnits = (task: Task) => `The sheet has no units, so nothing is claimed. Write the plan into ${sheetOf(task)}. \`grisha help sheet\` shows the shape.`
 const pathsOf = (sheet: Sheet, boxes: string[]) => sheet.boxes.filter((box) => boxes.includes(box.name)).flatMap((box) => box.paths)
 
-export const APPROVE_HINT = "The person approves it by running `grisha approve` in their own terminal."
+export const APPROVE_HINT = "Run `grisha approve`: the person is shown the plan and asked."
 
 export function place(world: World): Place | null {
   const found = checkout(world)
@@ -197,18 +211,27 @@ export function view(world: World, here: Place, task: Task): View {
     boxes: task.sheet.boxes,
     units: task.sheet.units.map((unit) => ({
       ...unit,
-      claims: unit.claims.map((claim) => ({ ...claim, status: statusOf(claim, task.runs, () => fingerprint(unit, claim)) })),
+      claims: unit.claims.map((claim) => ({
+        ...claim,
+        status: statusOf(claim, task.runs, () => fingerprint(unit, claim)),
+        evidence: task.runs.findLast((run) => run.claim === claim.id)?.evidence,
+      })),
     })),
   }
 }
 
 export const claimsOf = (units: View["units"]) => units.flatMap((unit) => unit.claims)
 
-export function blocking(seen: View, at: Moment): string[] {
-  return claimsOf(seen.units).flatMap((claim) => {
-    const block = BLOCKS[claim.status]
-    return block && (block.at === "commit" || at === "push") ? [block.fix(claim.id)] : []
-  })
+const FIRST_TO_FIX: Status[] = ["failing", "stale", "not run", "passes, never seen failing", "no check"]
+
+export function blocking(seen: View, bar: Bar): string[] {
+  return seen.units.flatMap((unit) =>
+    FIRST_TO_FIX.flatMap((status) => {
+      const block = BLOCKS[status]
+      const claims = unit.claims.filter((claim) => claim.status === status)
+      return block && claims.length > 0 && (block.at === "nothing wrong" || bar === "all proven") ? block.fix(claims) : []
+    }),
+  )
 }
 
 export function outsidePlan(world: World, task: Task, base: string): string[] {

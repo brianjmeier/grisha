@@ -1,23 +1,27 @@
 import { brokenRules, recordCatches } from "./rules"
-import { APPROVE_HINT, blocking, view, type Broken, type Moment, type Place, type Task } from "./sheet"
+import { APPROVE_HINT, blocking, noUnits, sheetProblems, view, type Bar, type Broken, type Place, type Task } from "./sheet"
 import type { World } from "./world"
 
-export const APPROVAL_IS_THE_PERSONS = "Approval belongs to the person, who runs this in their own terminal."
+export const folderOf = (command: string) => /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&]+))\s*(?:&&|;)/.exec(command)?.slice(1).find(Boolean)
 
-export function momentOf(command: string): "approve" | Moment | null {
-  if (/\bgrisha(\.ts)?\s+(approve\b|rules\s.*--approve\b)/.test(command)) return "approve"
-  if (/\bgit\s+push\b|\bgh\s+pr\s+create\b/.test(command)) return "push"
-  if (/\bgit\s+commit\b/.test(command)) return "commit"
+const contains = (command: string, words: string) =>
+  new RegExp(`(?<![\\w-])${words.trim().split(/\s+/).map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+")}(?![\\w-])`).test(command)
+
+export function askedOf(command: string, on: { before: string[]; provenBefore: string[] }): "approve plan" | "approve rules" | Bar | null {
+  if (/\bgrisha(\.ts)?\s+rules\s.*--approve\b/.test(command)) return "approve rules"
+  if (/\bgrisha(\.ts)?\s+approve\b/.test(command)) return "approve plan"
+  if (on.provenBefore.some((words) => contains(command, words))) return "all proven"
+  if (on.before.some((words) => contains(command, words))) return "nothing wrong"
   return null
 }
 
-export function blockers(world: World, here: Place, task: Task | Broken | null, base: string, at: Moment): string[] {
+export function blockers(world: World, here: Place, task: Task | Broken | null, base: string, bar: Bar): string[] {
   const todo: string[] = []
-  if (task && "problems" in task) todo.push(...task.problems)
+  if (task && "problems" in task) todo.push(sheetProblems(task).join("\n  "))
+  else if (task && task.sheet.units.length === 0) todo.push(noUnits(task))
   else if (task) {
-    if (task.approval !== "approved") todo.push(`The plan is ${task.approval}. ${APPROVE_HINT}`)
-    if (at === "push" && task.sheet.units.length === 0) todo.push("The sheet has no units, so nothing is claimed.")
-    todo.push(...blocking(view(world, here, task), at))
+    if (task.approval !== "approved") todo.push(`${task.approval === "not approved" ? "The plan is not approved" : "The plan changed after it was approved"}. ${APPROVE_HINT}`)
+    todo.push(...blocking(view(world, here, task), bar))
   }
   const rules = brokenRules(world, here, base)
   recordCatches(world, here.home, rules.caught)

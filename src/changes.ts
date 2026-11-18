@@ -21,7 +21,7 @@ export class GitProblem extends Error {}
 
 function git(world: Git, args: string[]): string {
   const ran = world.git(args)
-  if (ran.code !== 0) throw new GitProblem(`git ${args.join(" ")} failed:\n${ran.out.trim()}`)
+  if (ran.code !== 0) throw new GitProblem(`git ${args.join(" ")} failed:\n${ran.out.trim()}\ngrisha reads the checkout through git. Fix what git reports, then run the same grisha command again.`)
   return ran.out
 }
 

@@ -6,9 +6,10 @@ type Ran = { code: number; out: string }
 export type World = {
   home: string
   now: () => Date
-  hostApproves: boolean
+  approved: string | null
   ask: ((question: string) => Promise<string>) | null
   input: () => string
+  at: (folder: string) => World
   print: (text: string) => void
   read: (path: string) => string | null
   write: (path: string, text: string) => void

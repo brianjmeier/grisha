@@ -13,7 +13,7 @@ type Loaded = { rules: Rule[]; groups: Map<string, string[]>; problems: string[]
 
 type Checkout = { root: string; home: string }
 
-export const RULES_APPROVE_HINT = "The person approves them by running `grisha rules --approve` in their own terminal."
+export const RULES_APPROVE_HINT = "Run `grisha rules --approve`: the person is shown what changed and asked."
 
 const COMMITTED = join(".grisha", "rules.json")
 

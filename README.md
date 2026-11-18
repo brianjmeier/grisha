@@ -1,15 +1,28 @@
 # grisha
 
-A coding agent says "done, tests pass". Grisha makes it show that.
+One place for your rules, and one loop your agent repeats until they are all met.
 
-For each task the agent writes a sheet: the claims that must be true when the work is finished, and the command that checks each one. You approve the sheet before any code is written. After that the `grisha` command runs the checks itself and says where each claim stands, so the agent cannot mark its own work.
+A coding agent says "done, tests pass". Grisha makes it show that. For each task the agent writes a sheet: the claims that must be true when the work is finished, and the command that checks each one. You approve the sheet before any code is written. From then on the agent asks `grisha next`, does the one thing it is told, and asks again. Grisha runs the checks itself, so the agent cannot mark its own work.
 
 ## One task
 
-A badge counts every row and should count only unread ones. The agent writes its plan on a sheet, and this is how the plan reads back:
+A badge counts every row and should count only unread ones. The agent writes its plan on a sheet and asks what is next:
 
 ```console
-$ grisha show
+$ grisha next
+Count only unread rows
+plan not approved · 1 unit · 3 claims: 2 not run, 1 no check
+
+Next: The plan is not approved. Run `grisha approve`: the person is shown the plan and asked.
+
+Then run `grisha next` again.
+(exit 1)
+```
+
+The agent runs `grisha approve`. Your agent app stops on that command and asks its usual allow-or-deny question, with the plan as the text:
+
+```console
+$ grisha approve
 Count only unread rows
 plan not approved · 1 unit · 3 claims: 2 not run, 1 no check
 
@@ -22,42 +35,39 @@ plan not approved · 1 unit · 3 claims: 2 not run, 1 no check
             by nothing yet
 ```
 
-The agent cannot approve its own plan:
+After your yes the command goes through. Your yes covers the plan you were shown, so if the sheet changes afterwards you are asked again.
 
 ```console
 $ grisha approve
-The person approves it by running `grisha approve` in their own terminal.
-(exit 1)
+The person approved the plan.
+Next: counts-unread, still-a-number are not run. Run `grisha run counts-unread still-a-number`. A check for new behaviour has to fail before the change is made.
 ```
 
-You run the same command in your own terminal. It shows you the plan and asks:
+Every answer ends with the next step. The agent runs the checks, makes the change, and runs them again:
 
 ```console
-Approve this? Type yes: yes
-Approved. Build one unit at a time: run its checks, see them fail, make the change, run them again.
-```
-
-A check for new behaviour has to fail before it can prove anything. The agent runs the checks, makes the change, and runs them again:
-
-```console
-$ grisha run
+$ grisha run counts-unread still-a-number
 counts-unread: failed (exit 1)    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-1.txt
+still-a-number: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-1.txt
 …
-    proves  counts-unread: the badge shows the number of unread rows    [failing]
+Next: counts-unread is failing. Its output is at ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-1.txt. Make the code do what the claim says, then run `grisha run counts-unread`.
 …
 $ grisha run counts-unread
 counts-unread: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/counts-unread-2.txt
 …
-    proves  counts-unread: the badge shows the number of unread rows    [proven]
+Next: still-a-number is stale. Run `grisha run still-a-number`. Code it covers changed after it last passed.
 ```
 
-One claim still has no check, so the push is refused:
+The loop ends when nothing is left:
 
 ```console
-$ grisha gate --final
-Before this goes further:
-- other-tenants has no check. Give it one, or set its check to { "how": "person reads" }.
-(exit 1)
+$ grisha next
+Count only unread rows
+plan approved · 1 unit · 3 claims: 2 proven, 1 for you to read
+
+Nothing is left: every claim with a check is proven and no rule is broken. `grisha pr` prints the proof for the pull request.
+Left for the person to read: other-tenants, another tenant's rows never count.
+1 changed file is in no planned box: `grisha outside` lists it. Say why each one changed in the pull request, or add a box that covers it to the sheet.
 ```
 
 The rest of this page quotes the same task. `bun run session` prints all of it, from the first command to the pull request section.
@@ -69,7 +79,7 @@ Grisha needs [Bun](https://bun.sh).
 ```sh
 git clone https://github.com/brianjmeier/grisha && cd grisha
 bun install
-bun link                   # puts `grisha` on your PATH
+bun link               # puts `grisha` on your PATH
 grisha rules --init    # writes your starter rules
 ```
 
@@ -81,89 +91,86 @@ for skill in skills/*/; do ln -s "$PWD/$skill" ~/.claude/skills/; done
 
 Sheets, rules and results live in `~/.grisha/`, outside your checkouts, so you can use it on a shared codebase without changing that codebase.
 
-### Make it refuse
+### When it runs
 
-Nothing is refused until something asks the gate before a commit or a push. Two git hook files do that for every agent app. `git rev-parse --git-path hooks` prints the folder to put them in:
+That is yours to choose. `grisha gate` exits 1 while something is known to be wrong, and `grisha gate --proven` exits 1 until every claim is proven. Call them wherever you want work stopped. `grisha help hooks` prints the two usual places.
+
+Git hooks work for every agent app. `git rev-parse --git-path hooks` prints the folder to put them in:
 
 ```sh
 # pre-commit
 exec grisha gate
 
 # pre-push
-exec grisha gate --final
+exec grisha gate --proven
 ```
 
-An agent can skip git hooks with `--no-verify`. In Claude Code, a hook in `settings.json` cannot be skipped, and it also refuses the agent's own attempts to approve:
+An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you anything. In Claude Code, a hook in `settings.json` cannot be skipped, and it is what puts the plan in front of you when the agent runs `grisha approve`. You name the commands it stops:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "grisha hook || exit 2" }] }]
+    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command",
+      "command": "grisha hook --before 'git commit' --proven-before 'git push' --proven-before 'gh pr create' || exit 2" }] }]
   }
 }
 ```
 
+Without that hook, `grisha approve` works only in a terminal, where it shows you the plan and asks you to type yes.
+
 [docs/hosts.md](docs/hosts.md) covers other apps, how approval stays with you, and how a view draws the sheet.
 
-## The loop
+## Where a claim stands
 
-```text
-1 claims     agent   grisha start "<task>", then what must be true after and what must stay true
-2 map        agent   boxes are the modules touched; units are the build steps, each with its claims
-3 approve    you     grisha approve, in your own terminal; nothing is run before this
-4 build      agent   one unit at a time: its check fails, the change, its check passes, commit
-5 hand over  agent   grisha gate --final, grisha outside, grisha pr
-```
-
-## What a claim's status means
-
-| Status | Meaning |
-|---|---|
-| `no check` | Nobody has decided how to settle it. Blocks a push. |
-| `for you to read` | Left to a person on purpose. Never counted as proven. |
-| `not run` | Has a check that was never run. Blocks a push. |
-| `failing` | Its last run failed. Blocks a commit. |
-| `stale` | It passed, then a file in the boxes it covers changed. Blocks a commit. |
-| `passes, never seen failing` | It passes, but has not shown it can fail. Blocks a push. |
-| `proven` | Its check failed once, passes now, and its code has not changed since. |
+| Status | Meaning | Refused by |
+|---|---|---|
+| `no check` | Nobody has said how to check it. | `gate --proven` |
+| `for you to read` | Left to a person on purpose. Never counted as proven. | |
+| `not run` | Its check has not been run. | `gate --proven` |
+| `failing` | Its check failed the last time it ran. | `gate` |
+| `stale` | It passed, then a file in the boxes it covers changed. | `gate` |
+| `passes, never seen failing` | It passes, but has not shown it can fail. | `gate --proven` |
+| `proven` | Its check failed once, passes now, and its code has not changed since. | |
 
 Status is worked out on every call from the recorded runs and the files as they are. Nothing stores it, so it cannot go out of date. Only runs of the command a claim has now count, so changing a check's command starts it again at `not run`.
 
-In the task above, changing the code made the other check stale, so the commit was refused. Run again it passed, but it had passed before the change too and had never shown it could fail. The agent broke the code on purpose, ran the check, restored the code and ran it once more:
+In the task above, changing the code made the other check stale, so the gate refused the commit. Run again it passed, but it had passed before the change too and had never shown it could fail. The agent broke the code on purpose, ran the check, restored the code and ran it once more:
 
 ```console
 $ grisha gate
 Before this goes further:
-- still-a-number is stale. Run `grisha run still-a-number`.
+- still-a-number is stale. Run `grisha run still-a-number`. Code it covers changed after it last passed.
 (exit 1)
 …
-    keeps   still-a-number: the badge still shows a number    [passes, never seen failing]
+Next: still-a-number passes but was never seen failing. Break the code it covers, run `grisha run still-a-number`, restore the code and run it again.
 …
 still-a-number: failed (exit 1)    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-3.txt
 …
 still-a-number: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-4.txt
 …
-    keeps   still-a-number: the badge still shows a number    [proven]
+plan approved · 1 unit · 3 claims: 2 proven, 1 no check
 ```
 
 ## Commands
 
 ```text
+next                the one thing to do now; exit 0 means nothing is left
 start "<task>"      begin a sheet for a task in this checkout, or pick it up again
 show                the plan and where each claim stands (--json, --mermaid)
-approve             the person approves the plan
+approve             ask the person to approve the plan; nothing is run before their yes
 run [claim ...]     run the checks and record what happened
+rules               check the lines this branch adds against the rules (--init, --approve)
 outside             changed files that no planned box covers
-rules               check the lines this branch adds against your rules and this repository's (--init, --approve)
-gate                what blocks a commit (--final: a push or pull request; --for "<command>": that command)
-hook                gate --for as a Claude Code hook: reads the hook's JSON, answers in its shape
 pr                  the proof as a pull request section
+gate                exit 1 while something is known wrong (--proven: until every claim is proven)
+hook                the gate as a Claude Code PreToolUse hook
 home                where this repository's sheets and verification skills live
+help [topic]        topics: sheet, rules, hooks
 
 --base <ref>        compare against this branch instead of the default one, for a branch stacked on another
 ```
 
-`start` prints the path of the sheet. This is the one the agent wrote for the task above:
+`start` prints the path of the sheet and the shape to write, which `grisha help sheet` prints again. This is the one the agent wrote for the task above:
 
 ```json
 {
@@ -189,7 +196,7 @@ home                where this repository's sheets and verification skills live
 }
 ```
 
-A unit's kind is `pin` (record today's behaviour in a test before anything moves), `reshape` (move code while the pin keeps passing) or `change`. A check's `how` is `script`, `test`, `drive app`, `model` or `person reads`.
+Boxes are the modules the task touches, and units are the build steps in order. A unit's kind is `pin` (record today's behaviour in a test before anything moves), `reshape` (move code while the pin keeps passing) or `change`. A check's `how` is `script`, `test`, `drive app`, `model` or `person reads`.
 
 `outside` names what changed without being planned, and `pr` prints the proof for the pull request body:
 
@@ -204,7 +211,11 @@ $ grisha pr
 1. **count unread rows** (change)
    - the badge shows the number of unread rows: **proven**, by script: sh test/unread.test.sh
    - the badge still shows a number: **proven**, by script: sh test/number.test.sh
-   - another tenant's rows never count: **no check**, by nothing yet
+   - another tenant's rows never count: **for you to read**, by person reads
+
+## Left for a person to read
+
+- another tenant's rows never count
 
 ## Changed outside the planned modules
 
@@ -251,17 +262,25 @@ $ grisha gate
 Before this goes further:
 - The rules here are not the ones the person approved:
   no longer in force: no-new-comments
-  The person approves them by running `grisha rules --approve` in their own terminal.
+  Run `grisha rules --approve`: the person is shown what changed and asked.
 (exit 1)
 ```
 
-That is what happens when either of your two files changes: every commit is blocked until you run `grisha rules --approve` in your own terminal. The committed file is read from the base branch, so a branch's edit to it changes nothing until it is merged, and the pull request is its review.
+The agent asks, and this is what your app shows you:
+
+```console
+$ grisha rules --approve
+Rules that differ from the ones you approved:
+  no longer in force: no-new-comments
+```
+
+That is what happens when either of your two files changes: the gate refuses until you have seen the change and said yes. The committed file is read from the base branch, so a branch's edit to it changes nothing until it is merged, and the pull request is its review.
 
 ## Skills
 
 | Skill | Use |
 |---|---|
-| `grisha` | The loop above. |
+| `grisha` | How to plan a task as claims, and what to do between the steps `grisha next` gives. |
 | `create-verification-skill`, `maintain-verification-skill` | Give a repository a scripted way to drive the real app, and keep it honest. |
 | `create-formal-verification-skill`, `maintain-formal-verification-skill`, `statechart` | Check a property in every case with a model checker or prover, and show the result as a chart. |
 | `blast-radius` | Find what a change could break elsewhere, and prove the one fact it is safe because of. |

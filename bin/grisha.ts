@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
 import { main } from "../src/main"
-import { realIO } from "../src/world"
+import { realIO, type World } from "../src/world"
 
 const inTerminal = process.stdin.isTTY
 
@@ -15,13 +15,14 @@ async function ask(question: string): Promise<string> {
   return answer
 }
 
-process.exit(
-  await main(process.argv.slice(2), {
-    ...realIO(process.cwd()),
-    home: process.env.GRISHA_HOME ?? join(homedir(), ".grisha"),
-    now: () => new Date(),
-    input: () => (inTerminal ? "" : readFileSync(0, "utf8")),
-    hostApproves: process.env.GRISHA_HOST_APPROVES === "1",
-    ask: inTerminal ? ask : null,
-  }),
-)
+const world = (cwd: string): World => ({
+  ...realIO(cwd),
+  home: process.env.GRISHA_HOME ?? join(homedir(), ".grisha"),
+  now: () => new Date(),
+  input: () => (inTerminal ? "" : readFileSync(0, "utf8")),
+  approved: process.env.GRISHA_APPROVED ?? null,
+  ask: inTerminal ? ask : null,
+  at: (folder) => world(resolve(cwd, folder)),
+})
+
+process.exit(await main(process.argv.slice(2), world(process.cwd())))

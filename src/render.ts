@@ -7,10 +7,13 @@ const count = (many: number, word: string) => `${many} ${word}${many === 1 ? "" 
 
 const checkLine = (check: Check | null) => (check === null ? "nothing yet" : check.run ? `${check.how}: ${check.run}` : check.how)
 
-export function asText(view: View): string {
+export function inBrief(view: View): string[] {
   const claims = claimsOf(view.units)
-  const standing = tally(claims) || "none yet"
-  const rows = [view.task, `plan ${view.approval} · ${count(view.units.length, "unit")} · ${count(claims.length, "claim")}: ${standing}`]
+  return [view.task, `plan ${view.approval} · ${count(view.units.length, "unit")} · ${count(claims.length, "claim")}: ${tally(claims) || "none yet"}`]
+}
+
+export function asText(view: View): string {
+  const rows = inBrief(view)
   view.units.forEach((unit, index) => {
     rows.push("", `${index + 1} ${unit.kind}  ${unit.name}    touches ${unit.touches.join(", ")}`)
     for (const claim of unit.claims) {

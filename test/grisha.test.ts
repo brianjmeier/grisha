@@ -47,17 +47,18 @@ function scene(cwd?: string) {
   }
   const run = async (args: string[], given: Partial<World> = {}) => {
     const printed: string[] = []
-    const world: World = {
-      ...realIO(root),
+    const world = (cwd: string): World => ({
+      ...realIO(cwd),
       home,
       now: () => new Date("2026-11-17T12:00:00Z"),
-      hostApproves: false,
+      approved: null,
       ask: async () => "yes",
       input: () => "",
+      at: world,
       print: (text) => printed.push(text),
       ...given,
-    }
-    return { code: await main(args, world), out: printed.join("\n") }
+    })
+    return { code: await main(args, world(root)), out: printed.join("\n") }
   }
   const share = (rules: unknown) => {
     put(".grisha/rules.json", typeof rules === "string" ? rules : JSON.stringify(rules))
@@ -78,7 +79,7 @@ test("a new sheet waits for the person's approval", async () => {
   const shown = await run(["show"])
   expect(shown.out).toContain("plan not approved ·")
   expect(shown.out).toContain("counts-unread: the count is the number of unread rows    [not run]")
-  expect((await run(["run"])).out).toContain("nothing is run")
+  expect((await run(["run"])).out).toContain("Nothing is run before the plan is approved.")
 })
 
 test("a sheet that names a missing box says which box and which exist", async () => {
@@ -92,9 +93,9 @@ test("a sheet that names a missing box says which box and which exist", async ()
 test("only the person approves, and a changed plan needs approving again", async () => {
   const { run, plan, sheetPath } = scene()
   await plan()
-  expect((await run(["approve"], { ask: null })).out).toContain("in their own terminal")
+  expect((await run(["approve"], { ask: null })).out).toContain("Nobody was asked")
   expect((await run(["approve"], { ask: async () => "y" })).out).toContain("Not approved.")
-  expect((await run(["approve"])).out).toContain("Approved.")
+  expect((await run(["approve"])).out).toContain("The person approved the plan.")
   writeFileSync(sheetPath(), JSON.stringify({ ...SHEET, task: "Count unread and starred rows" }))
   expect((await run(["show"])).out).toContain("plan changed since it was approved")
 })
@@ -103,10 +104,10 @@ test("a claim is proven only after its check was seen failing, and goes stale wh
   const { run, plan, put } = scene()
   await plan()
   await run(["approve"])
-  expect((await run(["run"])).out).toContain("[failing]")
+  expect((await run(["run"])).out).toContain("1 failing")
 
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run", "counts-unread"])).out).toContain("[proven]")
+  expect((await run(["run", "counts-unread"])).out).toContain("1 proven")
 
   put("src/other/unrelated.ts", "export const one = 2\n")
   expect((await run(["show"])).out).toContain("[proven]")
@@ -122,27 +123,28 @@ test("a claim about a box its unit does not change goes stale when that box chan
   await plan({ ...SHEET, boxes: [...SHEET.boxes, { name: "other", paths: ["src/other"] }], units: [{ ...SHEET.units[0], claims }] })
   await run(["approve"])
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run"])).out).toContain("the other module still loads    [passes, never seen failing]")
+  await run(["run"])
+  expect((await run(["show"])).out).toContain("the other module still loads    [passes, never seen failing]")
   put("src/other/unrelated.ts", "export const one = 2\n")
   const shown = (await run(["show"])).out
   expect(shown).toContain("the count is the number of unread rows    [passes, never seen failing]")
   expect(shown).toContain("the other module still loads    [stale]")
 })
 
-test("a check that never failed is not called proven, and blocks a push until it is seen failing", async () => {
+test("a check that never failed is not called proven until it is seen failing", async () => {
   const { run, plan, put } = scene()
   put("src/inbox/count.sh", "echo 2\n")
   await plan()
   await run(["approve"])
-  expect((await run(["run"])).out).toContain("[passes, never seen failing]")
+  expect((await run(["run"])).out).toContain("1 passes, never seen failing")
   expect((await run(["gate"])).code).toBe(0)
-  expect((await run(["gate", "--final"])).out).toContain("counts-unread passes but was never seen failing.")
+  expect((await run(["gate", "--proven"])).out).toContain("counts-unread passes but was never seen failing.")
 
   put("src/inbox/count.sh", "echo 3\n")
   await run(["run"])
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run"])).out).toContain("[proven]")
-  expect((await run(["gate", "--final"])).code).toBe(0)
+  expect((await run(["run"])).out).toContain("1 proven")
+  expect((await run(["gate", "--proven"])).code).toBe(0)
 })
 
 test("a failure seen with an earlier command does not prove the command the claim has now", async () => {
@@ -151,13 +153,13 @@ test("a failure seen with an earlier command does not prove the command the clai
   await run(["approve"])
   await run(["run"])
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run"])).out).toContain("[proven]")
+  expect((await run(["run"])).out).toContain("1 proven")
 
   const weaker = { ...SHEET.units[0]?.claims[0], check: { how: "script", run: "true" } }
   writeFileSync(sheetPath(), JSON.stringify({ ...SHEET, units: [{ ...SHEET.units[0], claims: [weaker] }] }))
   await run(["approve"])
   expect((await run(["show"])).out).toContain("[not run]")
-  expect((await run(["run"])).out).toContain("[passes, never seen failing]")
+  expect((await run(["run"])).out).toContain("1 passes, never seen failing")
 })
 
 test("outside lists changed files that no box covers", async () => {
@@ -282,8 +284,13 @@ test("a change to your rules blocks until you approve it, once for every reposit
   expect(gated.out).toContain("  →  ^//")
   expect((await other.run(["gate"], { home })).code).toBe(1)
 
-  expect((await run(["rules", "--approve"], { ask: null })).out).toContain("in their own terminal")
-  expect((await run(["gate", "--for", "GRISHA_HOST_APPROVES=1 grisha rules --approve"])).code).toBe(1)
+  expect((await run(["rules", "--approve"], { ask: null })).out).toContain("Nobody was asked")
+  const forAHost = await run(["gate", "--for", "grisha rules --approve"])
+  expect(forAHost.code).toBe(2)
+  expect(forAHost.out).toContain("no longer in force: no-spies")
+  const inTheApp = JSON.parse((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command: "grisha rules --approve" } }) })).out).hookSpecificOutput
+  expect(inTheApp.permissionDecision).toBe("ask")
+  expect(inTheApp.permissionDecisionReason).toContain("new: no-act")
   const asked: string[] = []
   await run(["rules", "--approve"], { ask: async (shown) => (asked.push(shown), "yes") })
   expect(asked.join()).toContain("no longer in force: no-spies")
@@ -320,13 +327,49 @@ test("a branch cannot loosen the repository's committed rules for itself", async
   expect((await run(["gate"])).code).toBe(0)
 })
 
-test("a host's approve button approves without a terminal, and only a typed yes approves in one", async () => {
+test("the agent asks, the person answers in their agent app, and the yes covers only what they were shown", async () => {
+  const { run, plan, sheetPath } = scene()
+  await plan()
+  const hook = async (command: string) =>
+    JSON.parse((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command, timeout: 5 } }) })).out).hookSpecificOutput
+  const asked = await hook("grisha approve")
+  expect(asked.permissionDecision).toBe("ask")
+  expect(asked.permissionDecisionReason).toContain("counts-unread: the count is the number of unread rows")
+  expect(asked.updatedInput.timeout).toBe(5)
+  const mark = /^export GRISHA_APPROVED=(\w+); grisha approve$/.exec(asked.updatedInput.command)?.[1] ?? "no mark"
+
+  expect((await run(["approve"], { ask: null, approved: "1" })).out).toContain("not what the person was asked")
+  writeFileSync(sheetPath(), JSON.stringify({ ...SHEET, task: "Count unread and starred rows" }))
+  expect((await run(["approve"], { ask: null, approved: mark })).out).toContain("not what the person was asked")
+  expect((await run(["show"])).out).toContain("plan not approved")
+
+  writeFileSync(sheetPath(), JSON.stringify(SHEET))
+  expect((await run(["approve"], { ask: null, approved: mark })).out).toContain("The person approved the plan.")
+  const again = await hook("grisha approve")
+  expect(again.permissionDecision).toBe("deny")
+  expect(again.permissionDecisionReason).toContain("already approved")
+
+  const forAHost = await run(["gate", "--for", "grisha approve"])
+  expect(forAHost.code).toBe(1)
+})
+
+test("a command that starts by entering another checkout is judged in that checkout", async () => {
+  const here = scene()
+  const other = scene()
+  await other.plan()
+  await other.run(["approve"])
+  await other.run(["run"])
+  const asked = (command: string) => here.run(["hook", "--before", "git commit"], { home: other.home, input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
+  expect((await asked(`cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
+  expect((await asked(`cd "${other.root}"; git commit -m wip`)).out).toContain("counts-unread is failing.")
+  expect((await asked("git commit -m wip")).out).toBe("")
+})
+
+test("in a terminal, only a typed yes approves", async () => {
   const { run, plan } = scene()
   await plan()
-  expect((await run(["approve"], { ask: null, hostApproves: true })).out).toContain("Approved.")
-  await plan({ ...SHEET, task: "Count only unread rows, again" })
   const questions: string[] = []
-  expect((await run(["approve"], { ask: async (question) => (questions.push(question), " YES\n") })).out).toContain("Approved.")
+  expect((await run(["approve"], { ask: async (question) => (questions.push(question), " YES\n") })).out).toContain("The person approved the plan.")
   expect(questions.join()).toContain("counts-unread")
   expect(questions.join()).toContain("Type yes")
 })
@@ -357,7 +400,7 @@ test("a hook that cannot read its input, or cannot ask git, refuses the command"
   await run(["rules", "--init"])
   const real = realIO(root).git
   const commit = () => JSON.stringify({ tool_name: "Bash", tool_input: { command: "git commit -m wip" } })
-  const noGit = await run(["hook"], { input: commit, git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: index file corrupt" } : real(args)) })
+  const noGit = await run(["hook", "--before", "git commit"], { input: commit, git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: index file corrupt" } : real(args)) })
   expect(JSON.parse(noGit.out).hookSpecificOutput.permissionDecisionReason).toContain("index file corrupt")
   expect((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Read", tool_input: { file_path: "a" } }) })).out).toBe("")
 })
@@ -372,30 +415,114 @@ test("a refusal at the gate is logged once, however often the gate is asked", as
   expect(lines(readFileSync(log, "utf8")).map((line) => JSON.parse(line).rule)).toEqual(["no-new-effects"])
 })
 
-test("a commit is blocked by what failed, a push also by what was never run", async () => {
+test("the gate refuses what is known wrong, and with --proven also what has not been shown yet", async () => {
   const { run, plan, put } = scene()
   await plan()
   expect((await run(["gate"])).out).toContain("The plan is not approved.")
   await run(["approve"])
   expect((await run(["gate"])).code).toBe(0)
-  expect((await run(["gate", "--final"])).out).toContain("counts-unread is not run.")
+  expect((await run(["gate", "--proven"])).out).toContain("counts-unread is not run.")
 
   await run(["run"])
   expect((await run(["gate"])).out).toContain("counts-unread is failing.")
   put("src/inbox/count.sh", "echo 2\n")
   await run(["run"])
-  expect((await run(["gate", "--final"])).code).toBe(0)
+  expect((await run(["gate", "--proven"])).code).toBe(0)
 })
 
-test("the hook refuses an agent's approval and a commit over a failing claim, and lets other commands through", async () => {
-  const { run, plan } = scene()
+test("the hook refuses only the commands the person named, each at the bar they named", async () => {
+  const { run, plan, put } = scene()
   await plan()
   await run(["approve"])
+  const asked = (command: string, ...flags: string[]) => run(["hook", ...flags], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
+  const wired = ["--before", "git commit", "--proven-before", "git push", "--proven-before", "gh pr create"]
+
+  expect((await asked("git commit -m wip", ...wired)).out).toBe("")
+  expect((await asked("git push", ...wired)).out).toContain("counts-unread is not run.")
+  expect((await asked("gh  pr create --fill", ...wired)).out).toContain("counts-unread is not run.")
+  expect((await asked("git push")).out).toBe("")
+
   await run(["run"])
-  const asked = (command: string) => run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
+  expect((await asked("git commit -m wip", ...wired)).out).toContain("counts-unread is failing.")
+  expect((await asked("git commit -m wip")).out).toBe("")
+  expect((await asked("git commit-tree abc", ...wired)).out).toBe("")
+  expect((await asked("git status", ...wired)).out).toBe("")
+  expect((await asked("jj commit -m wip", "--before", "jj commit")).out).toContain("counts-unread is failing.")
   expect((await asked("grisha approve")).out).toContain('"permissionDecision":"deny"')
-  expect((await asked("git commit -m wip")).out).toContain("counts-unread is failing.")
-  expect((await asked("git status")).out).toBe("")
+
+  put("src/inbox/count.sh", "echo 2\n")
+  await run(["run"])
+  expect((await asked("git push", ...wired)).out).toBe("")
+})
+
+test("next names the one thing to do now, from an empty checkout to nothing left", async () => {
+  const { run, put } = scene()
+  const next = async () => run(["next"])
+  expect(await next()).toEqual({ code: 1, out: 'No task is started in this checkout. Begin with: grisha start "<task>"' })
+
+  const started = (await run(["start", SHEET.task])).out
+  const sheet = started.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
+  expect(started).toContain('"kind": "change"')
+  expect((await next()).out).toContain(`Next: The sheet has no units, so nothing is claimed. Write the plan into ${sheet}.`)
+
+  writeFileSync(sheet, JSON.stringify({ ...SHEET, units: "soon" }))
+  const broken = await next()
+  expect(broken.out).toContain('- "units" must be a list of build steps, in order.')
+  expect(broken.out).toContain("`grisha help sheet` shows the shape.")
+
+  writeFileSync(sheet, JSON.stringify(SHEET))
+  expect((await next()).out).toContain("Next: The plan is not approved. Run `grisha approve`")
+  expect((await run(["run"])).out).toBe("Nothing is run before the plan is approved. Next: The plan is not approved. Run `grisha approve`: the person is shown the plan and asked.")
+  expect((await run(["approve"])).out).toBe("The person approved the plan.\nNext: counts-unread is not run. Run `grisha run counts-unread`. A check for new behaviour has to fail before the change is made.")
+
+  const failing = (await run(["run", "counts-unread"])).out.split("\n").at(-1) ?? ""
+  const evidence = /Its output is at (\S+)\. Make the code do what the claim says, then run `grisha run counts-unread`\./.exec(failing)?.[1] ?? "no path"
+  expect(readFileSync(evidence, "utf8")).toBe("")
+  const stuck = await next()
+  expect(stuck.code).toBe(1)
+  expect(stuck.out).toContain("plan approved · 1 unit · 2 claims: 1 failing, 1 for you to read")
+  expect(stuck.out.endsWith("Then run `grisha next` again.")).toBe(true)
+
+  put("src/inbox/count.sh", "echo 2\n")
+  put("src/other/unrelated.ts", "export const one = 2\n")
+  expect((await run(["run"])).out).toContain("Nothing is left: every claim with a check is proven and no rule is broken.")
+  const done = await next()
+  expect(done.code).toBe(0)
+  expect(done.out).toContain("`grisha pr` prints the proof for the pull request.")
+  expect(done.out).toContain("Left for the person to read: reads-well, the query is easy to follow.")
+  expect(done.out).toContain("1 changed file is in no planned box: `grisha outside` lists it.")
+})
+
+test("checks that can be run in one go are asked for in one step, and a failing claim comes before a stale one", async () => {
+  const { run, plan, put } = scene()
+  const [unit] = SHEET.units
+  const two = { ...unit, claims: [{ id: "still-a-number", says: "the count is a number", role: "keeps", check: { how: "script", run: "true" } }, ...(unit?.claims ?? [])] }
+  await plan({ ...SHEET, units: [two] })
+  await run(["approve"])
+  expect((await run(["next"])).out).toContain("Next: still-a-number, counts-unread are not run. Run `grisha run still-a-number counts-unread`.")
+
+  await run(["run"])
+  put("src/inbox/count.sh", "echo 5\n")
+  expect((await run(["show"])).out).toContain("the count is a number    [stale]")
+  expect((await run(["next"])).out).toContain("Next: counts-unread is failing.")
+})
+
+test("the command explains itself: every status, the sheet and the rules, with examples it accepts", async () => {
+  const { run, home } = scene()
+  const help = (await run(["help"])).out
+  for (const status of ["no check", "for you to read", "not run", "failing", "stale", "passes, never seen failing", "proven"]) expect(help).toContain(`\n  ${status}  `)
+  expect((await run([])).out).toBe(help)
+  expect((await run(["help", "hooks"])).out).toContain("grisha hook --before 'git commit' --proven-before 'git push'")
+  expect((await run(["help", "nonsense"])).out).toContain("Topics: sheet, rules, hooks.")
+  const example = (text: string) => /^\{\n[\s\S]*?^\}$/m.exec(text)?.[0] ?? ""
+
+  const sheet = (await run(["start", "Try the example"])).out.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
+  writeFileSync(sheet, example((await run(["help", "sheet"])).out))
+  expect((await run(["show"])).out).toContain("other-tenants: another tenant's rows never count    [no check]")
+
+  writeFileSync(join(home, "rules.json"), example((await run(["help", "rules"])).out))
+  const rules = (await run(["rules"])).out
+  expect(rules).toContain("new: no-new-comments, no-spies")
 })
 
 test("any host can pass the command about to run and get the same answer in plain text", async () => {
@@ -403,16 +530,17 @@ test("any host can pass the command about to run and get the same answer in plai
   await plan()
   await run(["approve"])
   await run(["run"])
-  const approval = await run(["gate", "--for", "GRISHA_HOST_APPROVES=1 grisha approve"])
+  const approval = await run(["gate", "--for", "grisha approve"])
   expect(approval.code).toBe(1)
-  expect(approval.out).toContain("in their own terminal")
-  const commit = await run(["gate", "--for", "git commit -m wip"])
+  expect(approval.out).toContain("already approved")
+  const commit = await run(["gate", "--for", "git commit -m wip", "--before", "git commit"])
   expect(commit.code).toBe(1)
   expect(commit.out).toContain("counts-unread is failing.")
-  expect(await run(["gate", "--for", "git status"])).toEqual({ code: 0, out: "" })
+  expect(await run(["gate", "--for", "git commit -m wip"])).toEqual({ code: 0, out: "" })
+  expect(await run(["gate", "--for", "git status", "--before", "git commit"])).toEqual({ code: 0, out: "" })
 
   const nowhere = scene(temp("no-repo"))
-  expect((await nowhere.run(["gate", "--for", "git commit -m wip"])).code).toBe(0)
+  expect((await nowhere.run(["gate", "--for", "git commit -m wip", "--before", "git commit"])).code).toBe(0)
 })
 
 test("the pull request section lists each claim, what is left to read and what fell outside the plan", async () => {

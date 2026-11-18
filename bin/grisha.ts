@@ -22,7 +22,7 @@ const world = (cwd: string): World => ({
   input: () => (inTerminal ? "" : readFileSync(0, "utf8")),
   approved: process.env.GRISHA_APPROVED ?? null,
   ask: inTerminal ? ask : null,
-  at: (folder) => world(resolve(cwd, folder)),
+  at: (folder) => world(resolve(cwd, folder === "~" || folder.startsWith("~/") ? join(homedir(), folder.slice(1)) : folder)),
 })
 
 process.exit(await main(process.argv.slice(2), world(process.cwd())))

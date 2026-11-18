@@ -29,7 +29,9 @@ grisha gate --for "$command" --before "git commit" --proven-before "git push"
 | `grisha approve` or `grisha rules --approve` | exit 2, what the person must see, and a mark on the last line; exit 1 and the reason when there is nothing to approve |
 | anything else, or outside a git repository | exit 0, nothing printed |
 
-The words match as whole words with any spacing, so `git commit` matches `git  commit -m wip` and not `git commit-tree`. Both flags can be given more than once. A command that starts with `cd <folder> &&` is judged in that folder.
+The words match as whole words with any spacing, so `git commit` matches `git  commit -m wip` and not `git commit-tree`. Both flags can be given more than once. Each `cd <folder>` in the command is followed in order, and the command is judged in the folder it ends in. When a folder is not written out, as in `cd "$REPO"`, the command is refused with a line asking for it to be.
+
+Matching words in a command is a convenience, not a guarantee: `git -C <folder> commit` does not contain the words `git commit`, and an agent can always spell a command another way. Git hooks see every commit and push however they were typed, so wire them as well when you want nothing to slip past.
 
 On exit 1 the host refuses the command and gives the agent the printed list. Each line says what to do, so the list is the agent's next prompt. A block is a to-do, not a strike: the agent fixes it and makes the same call again, so a host must not remember the refusal against the command. On exit 2 the host asks the person, as section 2 describes.
 
@@ -51,7 +53,7 @@ The host shows the person everything above the last two lines. On their yes it r
 
 With no host asking, the command works in a terminal: it shows the same text and asks the person to type yes. Anywhere else it approves nothing and says nobody was asked.
 
-This stops an agent that approves its own plan, or turns off a rule, to be helpful. With a host asking, an agent that sets the variable itself is still stopped, because the host sees the command either way. It does not stop an agent on a machine where nothing asks, or one that forges an approval file: the agent runs as you, so nothing on your disk is out of its reach.
+This stops an agent that approves its own plan, or turns off a rule, to be helpful. With a host asking, an agent that sets the variable on the command is still stopped, because the host asks about that command either way. It does not stop an agent that sets out to forge an approval. The mark is a fingerprint, not a secret: the agent can work it out, hide the command from the host inside a script, or write the approval file itself. The agent runs as you, so nothing grisha could keep on your disk is out of its reach.
 
 ## 3. Draw the sheet
 

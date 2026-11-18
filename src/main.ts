@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 import { baseOf, GitProblem } from "./changes"
 import { ASKED_ABOUT_SOMETHING_ELSE, confirm, markOf, NO_TASK, NOBODY_WAS_ASKED, toApprove } from "./approval"
 import { askThePerson, bashCall, deny } from "./claude-code"
-import { askedOf, blockers, folderOf } from "./gate"
+import { askedOf, blockers, foldersOf, unknownFolder } from "./gate"
 import { HELP, helpOn, SHEET_HELP } from "./help"
 import { asMermaid, asPullRequest, asText, inBrief } from "./render"
 import { approveRules, brokenRules, loadRules, recordCatches, ruleFiles } from "./rules"
@@ -83,8 +83,13 @@ async function answer(argv: string[], world: World): Promise<number> {
     const about = call ? call.command : flags.for
     const when = about === undefined ? (flags.proven ? "all proven" : "nothing wrong") : askedOf(about, { before: flags.before ?? [], provenBefore: flags["proven-before"] ?? [] })
     if (when === null) return 0
-    const folder = about === undefined ? undefined : folderOf(about)
-    const there = folder ? world.at(folder) : world
+    const folders = about === undefined ? [] : foldersOf(about)
+    const unknown = unknownFolder(folders)
+    if (unknown !== undefined) {
+      const why = `grisha cannot tell which checkout this command runs in, because it changes folder to ${unknown}. Run it again with the folder written out.`
+      return call ? say(deny(why)) : fail(why)
+    }
+    const there = folders.reduce((at, folder) => at.at(folder), world)
     const here = place(there)
     if (!here) return about === undefined ? fail(NOT_A_REPOSITORY) : 0
     if (when === "approve plan" || when === "approve rules") {

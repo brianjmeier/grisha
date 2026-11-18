@@ -2,7 +2,10 @@ import { brokenRules, recordCatches } from "./rules"
 import { APPROVE_HINT, blocking, noUnits, sheetProblems, view, type Bar, type Broken, type Place, type Task } from "./sheet"
 import type { World } from "./world"
 
-export const folderOf = (command: string) => /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&]+))\s*(?:&&|;)/.exec(command)?.slice(1).find(Boolean)
+export const foldersOf = (command: string) =>
+  [...command.matchAll(/(?:^|&&|\|\||[;|(\n])\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|)]+))/g)].map((found) => found.slice(1).find(Boolean) ?? "")
+
+export const unknownFolder = (folders: string[]) => folders.find((folder) => /[$`]/.test(folder) || folder === "-")
 
 const contains = (command: string, words: string) =>
   new RegExp(`(?<![\\w-])${words.trim().split(/\s+/).map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+")}(?![\\w-])`).test(command)

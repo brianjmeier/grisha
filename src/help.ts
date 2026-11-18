@@ -101,6 +101,8 @@ Claude Code, in settings.json. An agent cannot skip it, and it is what lets the 
   --before "<words>"          refuse a command that contains these words while something is known wrong
   --proven-before "<words>"   refuse it until every claim is proven
   With neither, the hook only asks the person when the command is an approval.
+  The words are looked for in the command as typed, so \`git -C <folder> commit\` is not \`git commit\`.
+  Git hooks see every commit and push however it was typed.
 
 Any other app: \`grisha gate --for "<command>"\` takes the same two flags and answers in plain text.
 Exit 1 means refuse the command and show the agent what was printed. Exit 2 means ask the person.`

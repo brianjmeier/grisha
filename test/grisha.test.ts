@@ -362,6 +362,12 @@ test("a command that starts by entering another checkout is judged in that check
   const asked = (command: string) => here.run(["hook", "--before", "git commit"], { home: other.home, input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
   expect((await asked(`cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
   expect((await asked(`cd "${other.root}"; git commit -m wip`)).out).toContain("counts-unread is failing.")
+  expect((await asked(`cd ${here.root} && cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
+  expect((await asked(`ls && cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
+  expect((await asked(`cd ${other.root} && cd ${here.root} && git commit -m wip`)).out).toBe("")
+  expect((await asked('cd "$REPO" && git commit -m wip')).out).toContain('cannot tell which checkout this command runs in, because it changes folder to $REPO.')
+  expect((await asked("cd - && git commit -m wip")).out).toContain("cannot tell which checkout")
+  expect((await asked('cd "$REPO" && git status')).out).toBe("")
   expect((await asked("git commit -m wip")).out).toBe("")
 })
 

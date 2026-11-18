@@ -1,4 +1,4 @@
-import { claimsOf, type Check, type View } from "./sheet"
+import { claimsOf, leftToRead, type Check, type View } from "./sheet"
 
 const tally = (claims: { status: string }[]) =>
   [...Map.groupBy(claims, (claim) => claim.status)].map(([status, same]) => `${same.length} ${status}`).join(", ")
@@ -41,7 +41,7 @@ export function asPullRequest(view: View, outside: string[]): string {
     rows.push(`${index + 1}. **${unit.name}** (${unit.kind})`)
     for (const claim of unit.claims) rows.push(`   - ${claim.says}: **${claim.status}**, by ${checkLine(claim.check)}`)
   })
-  const toRead = claimsOf(view.units).filter((claim) => claim.status === "for you to read")
+  const toRead = leftToRead(view)
   if (toRead.length > 0) rows.push("", "## Left for a person to read", "", ...toRead.map((claim) => `- ${claim.says}`))
   if (outside.length > 0) rows.push("", "## Changed outside the planned modules", "", ...outside.map((file) => `- \`${file}\``))
   return rows.join("\n")

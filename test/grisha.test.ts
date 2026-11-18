@@ -66,11 +66,17 @@ function scene(cwd?: string) {
     git("commit", "-q", "-m", "rules")
   }
   let sheet = ""
-  const plan = async (written: unknown = SHEET) => {
-    sheet = (await run(["start", SHEET.task])).out.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
-    writeFileSync(sheet, JSON.stringify(written))
+  const start = async (title: string) => {
+    const started = await run(["start", title])
+    sheet = started.out.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
+    return { sheet, out: started.out }
   }
-  return { root, home, git, put, share, run, plan, sheetPath: () => sheet }
+  const plan = async (written: unknown = SHEET) => writeFileSync((await start(SHEET.task)).sheet, JSON.stringify(written))
+  const hook = async (command: string, flags: string[] = [], given: Partial<World> = {}) => {
+    const answered = await run(["hook", ...flags], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command, timeout: 5 } }), ...given })
+    return { out: answered.out, said: answered.out === "" ? null : JSON.parse(answered.out).hookSpecificOutput }
+  }
+  return { root, home, git, put, share, run, start, plan, hook, sheetPath: () => sheet }
 }
 
 test("a new sheet waits for the person's approval", async () => {
@@ -263,7 +269,7 @@ test("a repository says once which files are its tests, and every rule for tests
 })
 
 test("a change to your rules blocks until you approve it, once for every repository", async () => {
-  const { run, home } = scene()
+  const { run, hook, home } = scene()
   const other = scene()
   await run(["rules", "--init"])
   const yours = join(home, "rules.json")
@@ -288,7 +294,7 @@ test("a change to your rules blocks until you approve it, once for every reposit
   const forAHost = await run(["gate", "--for", "grisha rules --approve"])
   expect(forAHost.code).toBe(2)
   expect(forAHost.out).toContain("no longer in force: no-spies")
-  const inTheApp = JSON.parse((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command: "grisha rules --approve" } }) })).out).hookSpecificOutput
+  const inTheApp = (await hook("grisha rules --approve")).said
   expect(inTheApp.permissionDecision).toBe("ask")
   expect(inTheApp.permissionDecisionReason).toContain("new: no-act")
   const asked: string[] = []
@@ -328,11 +334,9 @@ test("a branch cannot loosen the repository's committed rules for itself", async
 })
 
 test("the agent asks, the person answers in their agent app, and the yes covers only what they were shown", async () => {
-  const { run, plan, sheetPath } = scene()
+  const { run, plan, hook, sheetPath } = scene()
   await plan()
-  const hook = async (command: string) =>
-    JSON.parse((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command, timeout: 5 } }) })).out).hookSpecificOutput
-  const asked = await hook("grisha approve")
+  const asked = (await hook("grisha approve")).said
   expect(asked.permissionDecision).toBe("ask")
   expect(asked.permissionDecisionReason).toContain("counts-unread: the count is the number of unread rows")
   expect(asked.updatedInput.timeout).toBe(5)
@@ -345,7 +349,7 @@ test("the agent asks, the person answers in their agent app, and the yes covers 
 
   writeFileSync(sheetPath(), JSON.stringify(SHEET))
   expect((await run(["approve"], { ask: null, approved: mark })).out).toContain("The person approved the plan.")
-  const again = await hook("grisha approve")
+  const again = (await hook("grisha approve")).said
   expect(again.permissionDecision).toBe("deny")
   expect(again.permissionDecisionReason).toContain("already approved")
 
@@ -353,22 +357,30 @@ test("the agent asks, the person answers in their agent app, and the yes covers 
   expect(forAHost.code).toBe(1)
 })
 
-test("a command that starts by entering another checkout is judged in that checkout", async () => {
+test("a command that starts with cd <folder> && is judged in that folder, and any other command where the hook runs", async () => {
   const here = scene()
   const other = scene()
   await other.plan()
   await other.run(["approve"])
   await other.run(["run"])
-  const asked = (command: string) => here.run(["hook", "--before", "git commit"], { home: other.home, input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
-  expect((await asked(`cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
-  expect((await asked(`cd "${other.root}"; git commit -m wip`)).out).toContain("counts-unread is failing.")
-  expect((await asked(`cd ${here.root} && cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
-  expect((await asked(`ls && cd ${other.root} && git commit -m wip`)).out).toContain("counts-unread is failing.")
-  expect((await asked(`cd ${other.root} && cd ${here.root} && git commit -m wip`)).out).toBe("")
-  expect((await asked('cd "$REPO" && git commit -m wip')).out).toContain('cannot tell which checkout this command runs in, because it changes folder to $REPO.')
-  expect((await asked("cd - && git commit -m wip")).out).toContain("cannot tell which checkout")
-  expect((await asked('cd "$REPO" && git status')).out).toBe("")
-  expect((await asked("git commit -m wip")).out).toBe("")
+  const asked = async (command: string) => (await here.hook(command, ["--before", "git commit"], { home: other.home })).out
+  const there = async (command: string) => (await other.hook(command, ["--before", "git commit"])).out
+  const spaced = join(temp("with spaces"), "a repo")
+  mkdirSync(spaced, { recursive: true })
+
+  expect(await asked(`cd ${other.root} && git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await asked(`cd "${other.root}" && git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await asked("git commit -m wip")).toBe("")
+  expect(await there("git commit -m wip")).toContain("counts-unread is failing.")
+
+  expect(await there(`git commit -m wip && cd ${here.root}`)).toContain("counts-unread is failing.")
+  expect(await there('git commit -m "tidy; cd /tmp"')).toContain("counts-unread is failing.")
+  expect(await there(`cd ${here.root}/gone && git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await there(`cd "${spaced}" && git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await there('cd "$REPO" && git commit -m wip')).toContain("counts-unread is failing.")
+  expect(await there(`cd ${here.root}; git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await there(`ls && cd ${here.root} && git commit -m wip`)).toContain("counts-unread is failing.")
+  expect(await there(`cd ${here.root} && git commit -m wip`)).toBe("")
 })
 
 test("in a terminal, only a typed yes approves", async () => {
@@ -397,7 +409,7 @@ test("a base that does not exist, or a git command that fails, is reported and n
 })
 
 test("a hook that cannot read its input, or cannot ask git, refuses the command", async () => {
-  const { run, root } = scene()
+  const { run, hook, root } = scene()
   for (const input of ["not json", "", "\n"]) {
     const answered = await run(["hook"], { input: () => input })
     expect(answered.code).toBe(0)
@@ -405,9 +417,8 @@ test("a hook that cannot read its input, or cannot ask git, refuses the command"
   }
   await run(["rules", "--init"])
   const real = realIO(root).git
-  const commit = () => JSON.stringify({ tool_name: "Bash", tool_input: { command: "git commit -m wip" } })
-  const noGit = await run(["hook", "--before", "git commit"], { input: commit, git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: index file corrupt" } : real(args)) })
-  expect(JSON.parse(noGit.out).hookSpecificOutput.permissionDecisionReason).toContain("index file corrupt")
+  const noGit = await hook("git commit -m wip", ["--before", "git commit"], { git: (args) => (args[0] === "diff" ? { code: 128, out: "fatal: index file corrupt" } : real(args)) })
+  expect(noGit.said.permissionDecisionReason).toContain("index file corrupt")
   expect((await run(["hook"], { input: () => JSON.stringify({ tool_name: "Read", tool_input: { file_path: "a" } }) })).out).toBe("")
 })
 
@@ -437,10 +448,10 @@ test("the gate refuses what is known wrong, and with --proven also what has not 
 })
 
 test("the hook refuses only the commands the person named, each at the bar they named", async () => {
-  const { run, plan, put } = scene()
+  const { run, plan, put, hook } = scene()
   await plan()
   await run(["approve"])
-  const asked = (command: string, ...flags: string[]) => run(["hook", ...flags], { input: () => JSON.stringify({ tool_name: "Bash", tool_input: { command } }) })
+  const asked = (command: string, ...flags: string[]) => hook(command, flags)
   const wired = ["--before", "git commit", "--proven-before", "git push", "--proven-before", "gh pr create"]
 
   expect((await asked("git commit -m wip", ...wired)).out).toBe("")
@@ -462,12 +473,11 @@ test("the hook refuses only the commands the person named, each at the bar they 
 })
 
 test("next names the one thing to do now, from an empty checkout to nothing left", async () => {
-  const { run, put } = scene()
+  const { run, start, put } = scene()
   const next = async () => run(["next"])
   expect(await next()).toEqual({ code: 1, out: 'No task is started in this checkout. Begin with: grisha start "<task>"' })
 
-  const started = (await run(["start", SHEET.task])).out
-  const sheet = started.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
+  const { sheet, out: started } = await start(SHEET.task)
   expect(started).toContain('"kind": "change"')
   expect((await next()).out).toContain(`Next: The sheet has no units, so nothing is claimed. Write the plan into ${sheet}.`)
 
@@ -514,7 +524,7 @@ test("checks that can be run in one go are asked for in one step, and a failing 
 })
 
 test("the command explains itself: every status, the sheet and the rules, with examples it accepts", async () => {
-  const { run, home } = scene()
+  const { run, home, start } = scene()
   const help = (await run(["help"])).out
   for (const status of ["no check", "for you to read", "not run", "failing", "stale", "passes, never seen failing", "proven"]) expect(help).toContain(`\n  ${status}  `)
   expect((await run([])).out).toBe(help)
@@ -522,7 +532,7 @@ test("the command explains itself: every status, the sheet and the rules, with e
   expect((await run(["help", "nonsense"])).out).toContain("Topics: sheet, rules, hooks.")
   const example = (text: string) => /^\{\n[\s\S]*?^\}$/m.exec(text)?.[0] ?? ""
 
-  const sheet = (await run(["start", "Try the example"])).out.split("\n")[0]?.replace(/^[^:]*: /, "") ?? ""
+  const { sheet } = await start("Try the example")
   writeFileSync(sheet, example((await run(["help", "sheet"])).out))
   expect((await run(["show"])).out).toContain("other-tenants: another tenant's rows never count    [no check]")
 

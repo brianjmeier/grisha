@@ -1,4 +1,4 @@
-export const HELP = `grisha: one place for your rules, and one loop an agent repeats until they are all met.
+const HELP = `grisha: one place for your rules, and one loop an agent repeats until they are all met.
 
 The loop
   grisha next         where the task stands and the one thing to do now.
@@ -109,6 +109,4 @@ Exit 1 means refuse the command and show the agent what was printed. Exit 2 mean
 
 const TOPICS: Record<string, string> = { sheet: SHEET, rules: RULES, hooks: HOOKS }
 
-export const helpOn = (topic: string | undefined) => (topic === undefined ? HELP : (TOPICS[topic] ?? `No help on "${topic}". Topics: ${Object.keys(TOPICS).join(", ")}.\n\n${HELP}`))
-
-export const SHEET_HELP = SHEET
+export const helpOn = (topic?: string) => (topic === undefined ? HELP : (TOPICS[topic] ?? `No help on "${topic}". Topics: ${Object.keys(TOPICS).join(", ")}.\n\n${HELP}`))

@@ -1,13 +1,12 @@
 #!/usr/bin/env bun
-import { createHash } from "node:crypto"
 import { basename, dirname, join } from "node:path"
+import { sha } from "../src/text"
 import { checkout, committed, everyFile, fetched, filesAt, GitProblem, matches } from "../src/changes"
 import { realIO, type World } from "../src/world"
 
 type Port = { repository: string; folder: string; commit: string; sources: Record<string, string>; skipped?: string[] }
 
 const short = (commit: string) => commit.slice(0, 7)
-const sha = (text: string) => createHash("sha256").update(text).digest("hex")
 
 export function upstream(world: Pick<World, "git" | "read" | "print">): number {
   const here = checkout(world)

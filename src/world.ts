@@ -32,6 +32,7 @@ export function realIO(cwd: string): Pick<World, "print" | "read" | "write" | "a
       appendFileSync(path, text)
     },
     git: (args) => {
+      if (!existsSync(cwd)) return { code: 128, out: `${cwd} does not exist` }
       const ran = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" })
       return { code: ran.exitCode, out: (ran.exitCode === 0 ? ran.stdout : ran.stderr).toString() }
     },

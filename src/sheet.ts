@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto"
 import { join } from "node:path"
 import { changedFiles, checkout, everyFile, matches } from "./changes"
-import { isText, labelled, lines } from "./text"
+import { isText, labelled, lines, sha } from "./text"
 import type { World } from "./world"
 
 const HOWS = ["script", "test", "drive app", "model", "person reads"] as const
@@ -36,37 +35,37 @@ const together = (what: string, why: string) => (claims: Seen[]) => {
   return [`${ids.join(", ")} ${ids.length === 1 ? "is" : "are"} ${what}. Run \`grisha run ${ids.join(" ")}\`. ${why}`]
 }
 
-const BLOCKS: Record<Status, { at: Bar; fix: (claims: Seen[]) => string[] } | null> = {
-  "no check": {
-    at: "all proven",
-    fix: each(({ id }) => `${id} has no check. In the sheet, set its "check" to { "how": "script", "run": "<command>" }, or to { "how": "person reads" } when no command can settle it.`),
-  },
-  "for you to read": null,
-  "not run": { at: "all proven", fix: together("not run", "A check for new behaviour has to fail before the change is made.") },
+const FIXES_IN_ORDER: Record<Status, { at: Bar; fix: (claims: Seen[]) => string[] } | null> = {
   failing: {
     at: "nothing wrong",
     fix: each(({ id, evidence }) => `${id} is failing. Its output is at ${evidence}. Make the code do what the claim says, then run \`grisha run ${id}\`.`),
   },
   stale: { at: "nothing wrong", fix: together("stale", "Code it covers changed after it last passed.") },
+  "not run": { at: "all proven", fix: together("not run", "A check for new behaviour has to fail before the change is made.") },
   "passes, never seen failing": {
     at: "all proven",
     fix: each(({ id }) => `${id} passes but was never seen failing. Break the code it covers, run \`grisha run ${id}\`, restore the code and run it again.`),
   },
+  "no check": {
+    at: "all proven",
+    fix: each(({ id }) => `${id} has no check. In the sheet, set its "check" to { "how": "script", "run": "<command>" }, or to { "how": "person reads" } when no command can settle it.`),
+  },
+  "for you to read": null,
   proven: null,
 }
 
-const sha = (text: string) => createHash("sha256").update(text).digest("hex")
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
 const oneOf = (options: readonly string[]) => options.map((option) => `"${option}"`).join(", ")
 const slug = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60)
 const taskDir = (here: Place, name: string) => join(here.home, "tasks", name)
 const planHash = (sheet: Sheet) => sha(JSON.stringify(sheet))
-export const sheetOf = (task: Task) => join(task.dir, "sheet.json")
+export const NOT_A_REPOSITORY = "Not inside a git repository. Run grisha from the checkout you are working in."
+const NO_TASK = 'No task is started in this checkout. Begin with: grisha start "<task>"'
 export const sheetProblems = (broken: Broken) => [`Fix the sheet at ${broken.path}:`, ...broken.problems.map((problem) => `- ${problem}`), "`grisha help sheet` shows the shape."]
-export const noUnits = (task: Task) => `The sheet has no units, so nothing is claimed. Write the plan into ${sheetOf(task)}. \`grisha help sheet\` shows the shape.`
+export const noUnits = (task: Task) => `The sheet has no units, so nothing is claimed. Write the plan into ${join(task.dir, "sheet.json")}. \`grisha help sheet\` shows the shape.`
+export const usable = (task: Task | Broken | null): task is Task => task !== null && !("problems" in task)
+export const whyUnusable = (task: Broken | null) => (task ? sheetProblems(task) : [NO_TASK])
 const pathsOf = (sheet: Sheet, boxes: string[]) => sheet.boxes.filter((box) => boxes.includes(box.name)).flatMap((box) => box.paths)
-
-export const APPROVE_HINT = "Run `grisha approve`: the person is shown the plan and asked."
 
 export function place(world: World): Place | null {
   const found = checkout(world)
@@ -221,13 +220,12 @@ export function view(world: World, here: Place, task: Task): View {
 }
 
 export const claimsOf = (units: View["units"]) => units.flatMap((unit) => unit.claims)
-
-const FIRST_TO_FIX: Status[] = ["failing", "stale", "not run", "passes, never seen failing", "no check"]
+export const leftToRead = (seen: View) => claimsOf(seen.units).filter((claim) => claim.status === "for you to read")
 
 export function blocking(seen: View, bar: Bar): string[] {
   return seen.units.flatMap((unit) =>
-    FIRST_TO_FIX.flatMap((status) => {
-      const block = BLOCKS[status]
+    (Object.keys(FIXES_IN_ORDER) as Status[]).flatMap((status) => {
+      const block = FIXES_IN_ORDER[status]
       const claims = unit.claims.filter((claim) => claim.status === status)
       return block && claims.length > 0 && (block.at === "nothing wrong" || bar === "all proven") ? block.fix(claims) : []
     }),

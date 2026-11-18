@@ -2,9 +2,12 @@
   "name": "grisha",
   "version": "0.0.1",
   "private": true,
+  "description": "One place for your rules, and one loop your coding agent repeats until they are all met.",
   "license": "MIT",
+  "repository": "github:brianjmeier/grisha",
   "type": "module",
   "bin": { "grisha": "bin/grisha.ts" },
+  "files": ["bin", "src", "rules", "skills"],
   "scripts": { "test": "bun test", "check": "bunx tsc --noEmit", "upstream": "bun scripts/upstream.ts", "session": "bun scripts/session.ts" },
   "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^5.9.0" }
 }

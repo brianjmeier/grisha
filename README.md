@@ -74,19 +74,17 @@ The rest of this page quotes the same task. `bun run session` prints all of it, 
 
 ## Install
 
-Grisha needs [Bun](https://bun.sh).
+Grisha runs on [Bun](https://bun.sh), so that has to be installed first.
 
 ```sh
-git clone https://github.com/brianjmeier/grisha && cd grisha
-bun install
-bun link               # puts `grisha` on your PATH
-grisha rules --init    # writes your starter rules
+npm install -g github:brianjmeier/grisha    # puts `grisha` on your PATH
+grisha rules --init                         # writes your starter rules
 ```
 
-Give your agents the skills by linking each folder in `skills/` into the folder your agent reads skills from:
+The same line updates it later. Give your agents the skills by linking each one into the folder your agent reads skills from:
 
 ```sh
-for skill in skills/*/; do ln -s "$PWD/$skill" ~/.claude/skills/; done
+for skill in "$(npm root -g)"/grisha/skills/*/; do ln -s "$skill" ~/.claude/skills/; done
 ```
 
 Sheets, rules and results live in `~/.grisha/`, outside your checkouts, so you can use it on a shared codebase without changing that codebase.
@@ -293,6 +291,9 @@ All but the first come from [pstack](https://github.com/cursor/plugins/tree/main
 ## Development
 
 ```sh
+git clone https://github.com/brianjmeier/grisha && cd grisha
+bun install
+bun link           # puts your clone's `grisha` on your PATH
 bun test           # runs the command against real git repositories in temp folders
 bun run check      # types
 bun run session    # prints the task this page quotes

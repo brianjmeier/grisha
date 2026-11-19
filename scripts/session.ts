@@ -67,6 +67,7 @@ export async function session(now: () => Date): Promise<string> {
   git("config", "user.email", "someone@example.com")
   git("config", "user.name", "Someone")
   put("src/inbox/count.sh", "echo 3\n")
+  put("src/store/rows.ts", "// rows are kept per tenant\nexport const rows = []\n")
   put("test/unread.test.sh", '[ "$(sh src/inbox/count.sh)" = "2" ]\n')
   put("test/number.test.sh", 'sh src/inbox/count.sh | grep -Eq "^[0-9]+$"\n')
   git("add", ".")
@@ -123,7 +124,7 @@ export async function session(now: () => Date): Promise<string> {
 
   note("Instead of deleting the comment, the agent turns the rule off for this repository.")
   const mine = join(home, "repos", "shop", "rules.json")
-  writeFileSync(mine, `${JSON.stringify({ rules: [{ name: "no-new-comments", off: true }] })}\n`)
+  writeFileSync(mine, `${JSON.stringify({ rules: [{ name: "no-comments", off: true }] })}\n`)
   await grisha(["gate"])
 
   note("The agent asks you to approve the change. Your agent app shows you what would change.")

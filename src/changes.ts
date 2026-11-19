@@ -5,7 +5,7 @@ import type { World } from "./world"
 export type Added = { file: string; line: number; text: string }
 
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-const LARGEST_NEW_FILE = 1_000_000
+const LARGEST_FILE_READ = 1_000_000
 
 export function matches(path: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {
@@ -81,10 +81,12 @@ export function addedLines(world: Git & Pick<World, "read">, root: string, base:
       line = Number(/\+(\d+)/.exec(row)?.[1] ?? 0)
     } else if (keep && row.startsWith("+")) added.push({ file, line: line++, text: row.slice(1) })
   }
-  for (const path of untracked(world).filter((path) => matches(path, wanted))) {
-    const text = world.read(join(root, path))
-    if (text === null || text.length > LARGEST_NEW_FILE || text.includes("\0")) continue
-    text.split("\n").forEach((row, index) => added.push({ file: path, line: index + 1, text: row }))
-  }
+  for (const path of untracked(world).filter((path) => matches(path, wanted))) for (const row of linesOf(world, root, path)) added.push(row)
   return added
+}
+
+export function linesOf(world: Pick<World, "read">, root: string, path: string): Added[] {
+  const text = world.read(join(root, path))
+  if (text === null || text.length > LARGEST_FILE_READ || text.includes("\0")) return []
+  return text.split("\n").map((row, index) => ({ file: path, line: index + 1, text: row }))
 }

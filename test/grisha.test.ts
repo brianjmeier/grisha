@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createHash } from "node:crypto"
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { session } from "../scripts/session"
@@ -180,7 +180,7 @@ test("outside lists changed files that no box covers", async () => {
   expect(outside.out).not.toContain("src/inbox/count.sh")
 })
 
-test("rules catch added lines only, and log each catch once", async () => {
+test("a rule blocks the lines the branch adds and counts the ones already there, and each catch is logged once", async () => {
   const { run, put, git } = scene()
   put("src/app/Old.tsx", "useEffect(() => {})\n")
   git("add", ".")
@@ -193,17 +193,106 @@ test("rules catch added lines only, and log each catch once", async () => {
   put("src/app/New.tsx", "// waits for the list\nuseEffect(() => {})\n")
   const checked = await run(["rules"])
   expect(checked.code).toBe(1)
-  expect(checked.out).toContain("src/app/New.tsx:2  no-new-effects")
-  expect(checked.out).toContain("src/app/New.tsx:1  no-new-comments")
+  expect(checked.out).toContain("src/app/New.tsx:2  no-effects")
+  expect(checked.out).toContain("src/app/New.tsx:1  no-comments")
   expect(checked.out).not.toContain("Old.tsx")
+  const counts = lines(checked.out).map((line) => line.trim().split(/ {2,}/))
+  expect(counts).toContainEqual(["no-effects", "added lines", "1 line in 1 file"])
+  expect(counts).toContainEqual(["no-comments", "added lines", "none"])
 
   const gated = (await run(["gate"])).out
-  expect(gated).toContain("- src/app/New.tsx:1  no-new-comments")
-  expect(gated).toContain("- src/app/New.tsx:2  no-new-effects")
+  expect(gated).toContain("- src/app/New.tsx:1  no-comments")
+  expect(gated).toContain("- src/app/New.tsx:2  no-effects")
 
   await run(["rules"])
   const log = readFileSync(join((await run(["home"])).out, "catches.jsonl"), "utf8")
   expect(lines(log)).toHaveLength(2)
+})
+
+test("a rule set to every line blocks code that was already there", async () => {
+  const { run, put, share, git } = scene()
+  put("src/app/Old.tsx", "const kept = 1\nuseEffect(() => {})\n")
+  put("src/app/Older.tsx", "useEffect(() => {})\n// why\n")
+  git("add", ".")
+  share({
+    rules: [
+      { name: "no-effects", pattern: "\\buseEffect\\(", files: ["**/*.tsx"], fix: "Use the loader.", blocks: "every line" },
+      { name: "no-comments", pattern: "^//", files: ["**/*.tsx"], fix: "Delete it." },
+    ],
+  })
+  put("src/app/Old.tsx", "const kept = 1\nuseEffect(() => {})\nuseEffect(() => {})\n")
+
+  const gated = await run(["gate"])
+  expect(gated.code).toBe(1)
+  expect(lines(gated.out).filter((line) => /^- /.test(line))).toEqual(["- src/app/Old.tsx:2  no-effects", "- src/app/Old.tsx:3  no-effects", "- src/app/Older.tsx:1  no-effects"])
+  expect(gated.out).toContain("src/app/Old.tsx:3  no-effects\n  + useEffect(() => {})\n  Use the loader.")
+  expect(gated.out).toContain("src/app/Old.tsx:2  no-effects\n    useEffect(() => {})\n  Use the loader.")
+
+  const checked = await run(["rules"])
+  expect(checked.code).toBe(1)
+  expect(lines(checked.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/Old.tsx:2  no-effects", "src/app/Old.tsx:3  no-effects", "src/app/Older.tsx:1  no-effects"])
+  const counts = lines(checked.out).map((line) => line.trim().split(/ {2,}/))
+  expect(counts).toContainEqual(["no-effects", "every line", "2 lines in 2 files"])
+  expect(counts).toContainEqual(["no-comments", "added lines", "1 line in 1 file"])
+})
+
+test("a folder that git lists as one entry, as it does a submodule, is passed over", async () => {
+  const { run, share, git, root } = scene()
+  mkdirSync(join(root, "vendor/lib"), { recursive: true })
+  git("update-index", "--add", "--cacheinfo", `160000,${git("rev-parse", "HEAD").stdout.toString().trim()},vendor/lib`)
+  share({ rules: [{ name: "no-logging", pattern: "\\bconsole\\.", files: ["vendor"], fix: "Use the logger.", blocks: "every line" }] })
+  expect((await run(["gate"])).out).toContain("No rule is broken.")
+})
+
+test("a rule set to nothing lists the lines the branch adds and never blocks", async () => {
+  const { run, put, share, plan, git } = scene()
+  put("src/app/Old.tsx", "console.log(1)\n")
+  git("add", ".")
+  share({ rules: [{ name: "no-logging", pattern: "\\bconsole\\.", files: ["**/*.tsx"], fix: "Use the logger.", blocks: "nothing" }] })
+  put("src/app/New.tsx", "console.log(2)\n")
+
+  expect((await run(["gate"])).code).toBe(0)
+  const checked = await run(["rules"])
+  expect(checked.code).toBe(0)
+  expect(checked.out).toContain("No rule is broken.\n\nThese lines match a rule that does not block them:\nno-logging: Use the logger.\n  src/app/New.tsx:1  + console.log(2)\n\n")
+  expect(checked.out).not.toContain("Old.tsx")
+  expect(lines(checked.out).map((line) => line.trim().split(/ {2,}/))).toContainEqual(["no-logging", "nothing", "1 line in 1 file"])
+  expect(existsSync(join((await run(["home"])).out, "catches.jsonl"))).toBe(false)
+
+  await plan({ ...SHEET, units: [{ ...SHEET.units[0], claims: [{ id: "reads-well", says: "the query is easy to follow", role: "keeps", check: { how: "person reads" } }] }] })
+  await run(["approve"])
+  const done = await run(["next"])
+  expect(done.code).toBe(0)
+  expect(done.out).toContain("1 added line matches a rule that blocks nothing: `grisha rules` lists it.")
+  put("src/app/Newer.tsx", "console.log(3)\n")
+  expect((await run(["next"])).out).toContain("2 added lines match a rule that blocks nothing: `grisha rules` lists them.")
+})
+
+test("naming a rule lists every line it matches, and a wrong name lists the rules", async () => {
+  const { run, put, share, git } = scene()
+  put("src/app/Old.tsx", "useEffect(() => {})\nconsole.log(1)\n")
+  git("add", ".")
+  share({
+    rules: [
+      { name: "no-effects", pattern: "\\buseEffect\\(", files: ["**/*.tsx"], fix: "Use the loader." },
+      { name: "no-logging", pattern: "\\bconsole\\.", files: ["**/*.tsx"], fix: "Use the logger." },
+    ],
+  })
+  put("src/app/New.tsx", "console.log(2)\n")
+
+  const one = await run(["rules", "no-effects"])
+  expect(one.code).toBe(0)
+  expect(one.out).toContain("These lines match a rule that does not block them:\nno-effects: Use the loader.\n  src/app/Old.tsx:1    useEffect(() => {})\n\n")
+  expect(one.out).not.toContain("no-logging")
+  expect(one.out).not.toContain("grisha rules <rule>")
+
+  const other = await run(["rules", "no-logging"])
+  expect(other.code).toBe(1)
+  expect(other.out).toContain("src/app/New.tsx:1  no-logging\n  + console.log(2)\n  Use the logger.\n\nThese lines match a rule that does not block them:\nno-logging: Use the logger.\n  src/app/Old.tsx:2    console.log(1)\n\n")
+
+  const wrong = await run(["rules", "no-effect"])
+  expect(wrong.code).toBe(1)
+  expect(wrong.out).toBe("No rule called no-effect. The rules: no-effects, no-logging.")
 })
 
 test("a repository's rules add to yours, replace one by name and turn one off, for that repository only", async () => {
@@ -219,21 +308,21 @@ test("a repository's rules add to yours, replace one by name and turn one off, f
   share({
     rules: [
       { name: "no-act", pattern: "\\bact\\(", files: "tests", fix: "Wait for what the user sees." },
-      { name: "no-new-effects", pattern: "\\buseEffect\\(", files: ["**/*.tsx"], fix: "Use the loader." },
+      { name: "no-effects", pattern: "\\buseEffect\\(", files: ["**/*.tsx"], fix: "Use the loader." },
       { name: "no-logging", pattern: "\\bconsole\\.", files: ["**/*.tsx"], fix: "Use the logger." },
     ],
   })
   mkdirSync(dirname(mine), { recursive: true })
-  writeFileSync(mine, JSON.stringify({ rules: [{ name: "no-new-comments", off: true }, { name: "no-logging", off: true }] }))
+  writeFileSync(mine, JSON.stringify({ rules: [{ name: "no-comments", off: true }, { name: "no-logging", off: true }] }))
   await run(["rules", "--approve"])
 
   const here = await run(["rules"])
-  expect(lines(here.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:2  no-new-effects", "src/app/New.test.tsx:1  no-act"])
+  expect(lines(here.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:2  no-effects", "src/app/New.test.tsx:1  no-act"])
   expect(here.out).toContain("Use the loader.")
   expect(here.out).toContain(join(root, ".grisha", "rules.json"))
 
   const elsewhere = await other.run(["rules"], { home })
-  expect(lines(elsewhere.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:1  no-new-comments", "src/app/New.tsx:2  no-new-effects"])
+  expect(lines(elsewhere.out).filter((line) => /^\S+:\d+  /.test(line))).toEqual(["src/app/New.tsx:1  no-comments", "src/app/New.tsx:2  no-effects"])
   expect(elsewhere.out).not.toContain("Use the loader.")
 })
 
@@ -241,10 +330,17 @@ test("a rules file that turns off a rule nobody has, names a file group nobody d
   const { run, share, root } = scene()
   await run(["rules", "--init"])
   const committed = join(root, ".grisha", "rules.json")
-  share({ rules: [{ name: "no-new-comment", off: true }, { name: "no-act", pattern: "\\bact\\(", files: "specs", fix: "Wait." }] })
+  share({
+    rules: [
+      { name: "no-comment", off: true },
+      { name: "no-act", pattern: "\\bact\\(", files: "specs", fix: "Wait." },
+      { name: "no-logging", pattern: "\\bconsole\\.", files: ["src/**"], fix: "Use the logger.", blocks: "warning" },
+    ],
+  })
   const typo = await run(["gate"])
   expect(typo.code).toBe(1)
-  expect(typo.out).toContain(`${committed}: rules[0] "no-new-comment" turns off a rule that no earlier file has.`)
+  expect(typo.out).toContain(`${committed}: rules[2] "no-logging" has "blocks": "warning". It is "added lines", "every line", "nothing", and "added lines" when left out.`)
+  expect(typo.out).toContain(`${committed}: rules[0] "no-comment" turns off a rule that no earlier file has.`)
   expect(typo.out).toContain(`${committed}: rules[1] "no-act" applies to the file group "specs", which no rules file defines under "files".`)
 
   share("{")
@@ -279,6 +375,7 @@ test("a change to your rules blocks until you approve it, once for every reposit
   const edited = JSON.parse(starter)
   edited.rules = edited.rules.filter((rule: { name: string }) => rule.name !== "no-spies")
   edited.rules[0].pattern = "^//"
+  edited.rules[1].blocks = "nothing"
   edited.rules.push({ name: "no-act", pattern: "\\bact\\(", files: "tests", fix: "Wait for what the user sees." })
   writeFileSync(yours, JSON.stringify(edited))
   const gated = await run(["gate"])
@@ -286,8 +383,9 @@ test("a change to your rules blocks until you approve it, once for every reposit
   expect(gated.out).toContain("The rules here are not the ones the person approved:")
   expect(gated.out).toContain("no longer in force: no-spies")
   expect(gated.out).toContain("new: no-act")
-  expect(gated.out).toContain("changed: no-new-comments")
+  expect(gated.out).toContain("changed: no-comments")
   expect(gated.out).toContain("  →  ^//")
+  expect(gated.out).toContain("changed: no-effects\n    blocks: added lines  →  nothing")
   expect((await other.run(["gate"], { home })).code).toBe(1)
 
   expect((await run(["rules", "--approve"], { ask: null })).out).toContain("Nobody was asked")
@@ -304,7 +402,7 @@ test("a change to your rules blocks until you approve it, once for every reposit
   expect((await other.run(["gate"], { home })).code).toBe(0)
 
   unlinkSync(yours)
-  expect((await run(["gate"])).out).toContain("no longer in force: no-new-comments")
+  expect((await run(["gate"])).out).toContain("no longer in force: no-comments")
   expect((await run(["rules", "--init"])).out).toContain("the copy you approved is at")
 
   writeFileSync(yours, JSON.stringify(edited, null, 2))
@@ -429,7 +527,7 @@ test("a refusal at the gate is logged once, however often the gate is asked", as
   const log = join((await run(["home"])).out, "catches.jsonl")
   await run(["gate"])
   await run(["gate"])
-  expect(lines(readFileSync(log, "utf8")).map((line) => JSON.parse(line).rule)).toEqual(["no-new-effects"])
+  expect(lines(readFileSync(log, "utf8")).map((line) => JSON.parse(line).rule)).toEqual(["no-effects"])
 })
 
 test("the gate refuses what is known wrong, and with --proven also what has not been shown yet", async () => {
@@ -538,7 +636,7 @@ test("the command explains itself: every status, the sheet and the rules, with e
 
   writeFileSync(join(home, "rules.json"), example((await run(["help", "rules"])).out))
   const rules = (await run(["rules"])).out
-  expect(rules).toContain("new: no-new-comments, no-spies")
+  expect(rules).toContain("new: no-comments, no-spies")
 })
 
 test("any host can pass the command about to run and get the same answer in plain text", async () => {
@@ -586,7 +684,7 @@ test("an added line that starts with ++ is not read as the start of another file
   git("commit", "-q", "-m", "old code")
   await run(["rules", "--init"])
   put("src/app/Old.tsx", "const total = 1\n++ total\nuseEffect(() => {})\n")
-  expect((await run(["rules"])).out).toContain("src/app/Old.tsx:3  no-new-effects")
+  expect((await run(["rules"])).out).toContain("src/app/Old.tsx:3  no-effects")
 })
 
 test("the map draws each box with where its claims stand", async () => {
@@ -650,11 +748,11 @@ test("the upstream check lists each ported file that changed, went or appeared u
 test("every starter rule catches the line it is for and lets the line beside it through", async () => {
   const { run, put } = scene()
   const rows: [string, string, string?][] = [
-    ["src/app/View.tsx", "// explains itself", "no-new-comments"],
-    ["src/app/View.tsx", "// @ts-expect-error upstream type", "no-new-suppressions"],
-    ["src/app/View.tsx", "useEffect(() => load(), [])", "no-new-effects"],
+    ["src/app/View.tsx", "// explains itself", "no-comments"],
+    ["src/app/View.tsx", "// @ts-expect-error upstream type", "no-suppressions"],
+    ["src/app/View.tsx", "useEffect(() => load(), [])", "no-effects"],
     ["src/app/View.tsx", "const effects = useEffects"],
-    ["src/app/View.tsx", "setInterval(tick, 1000)", "no-new-timers"],
+    ["src/app/View.tsx", "setInterval(tick, 1000)", "no-timers"],
     ["src/app/host.ts", "timers.setTimeout(tick, 1000)"],
     ["src/app/host.ts", "const now = options.now ?? Date.now", "no-optional-clock"],
     ["src/app/host.ts", "type Options = { now?: () => number }", "no-optional-clock"],

@@ -6,8 +6,9 @@ import { askThePerson, bashCall, deny } from "./claude-code"
 import { judge, nextStep } from "./gate"
 import { helpOn } from "./help"
 import { asMermaid, asPullRequest, asText, inBrief } from "./render"
-import { approveRules, brokenRules, loadRules, recordCatches, ruleFiles } from "./rules"
+import { approveRules, brokenRules, everyMatch, loadRules, recordCatches, ruleFiles } from "./rules"
 import { currentTask, leftToRead, NOT_A_REPOSITORY, outsidePlan, place, runCheck, runnable, startTask, usable, view, whyUnusable, type Broken, type Task, type View } from "./sheet"
+import { counted } from "./text"
 import type { World } from "./world"
 
 const STARTER_RULES = join(import.meta.dir, "..", "rules", "starter.json")
@@ -129,11 +130,20 @@ async function answer(argv: string[], world: World): Promise<number> {
       ...files.map((file) => `  ${file.covers.padEnd(width)}  ${file.path}${file.text === null ? "  (no file)" : ""}${file.waits ? "  (your copy differs from the base branch and waits to be merged)" : ""}`),
     ]
     if (files.every((file) => file.text === null && !file.approved)) return say(`No rules yet. \`grisha rules --init\` writes a starter set to ${yours?.path}.`, ...read)
-    const groups = [...loadRules(files).groups].map(([name, patterns]) => `  ${name}  ${patterns.join("  ")}`)
+    const loaded = loadRules(files)
+    const unknown = loaded.problems.length > 0 ? [] : words.filter((name) => !loaded.rules.some((rule) => rule.name === name))
+    if (unknown.length > 0) return fail(`No rule called ${unknown.join(", ")}. The rules: ${loaded.rules.map((rule) => rule.name).join(", ")}.`)
+    const groups = [...loaded.groups].map(([name, patterns]) => `  ${name}  ${patterns.join("  ")}`)
     const where = groups.length > 0 ? [...read, "", "File groups a rule can apply to. A later file replaces a group by name:", ...groups] : read
-    const { broken, caught } = brokenRules(world, here, base(), files)
+    const { broken, caught, notBlocked, table } = everyMatch(world, here, base(), files, words)
     recordCatches(world, here.home, caught)
-    return broken.length > 0 ? fail(...broken, ...where) : say("No rule is broken by the lines this branch adds.", ...where)
+    return (broken.length > 0 ? fail : say)(
+      ...(broken.length > 0 ? broken : ["No rule is broken."]),
+      ...(notBlocked.length > 0 ? ["", "These lines match a rule that does not block them:", ...notBlocked] : []),
+      ...(table.length > 0 ? ["", "Each rule, the lines it blocks, and the lines already in the code that match it:", ...table] : []),
+      ...(table.length > 0 && words.length === 0 ? ["`grisha rules <rule>` lists every line a rule matches."] : []),
+      ...where,
+    )
   }
 
   const task = currentTask(world, here)
@@ -146,11 +156,13 @@ async function answer(argv: string[], world: World): Promise<number> {
     const now = left(task, seen)
     if (now !== DONE) return fail(...inBrief(seen), "", now, "", AGAIN)
     const outside = outsidePlan(world, task, base())
+    const { notBlocked } = brokenRules(world, here, base())
     return say(
       ...inBrief(seen),
       "",
       now,
       ...leftToRead(seen).map((claim) => `Left for the person to read: ${claim.id}, ${claim.says}.`),
+      ...(notBlocked > 0 ? [`${counted(notBlocked, "added line")} ${notBlocked === 1 ? "matches" : "match"} a rule that blocks nothing: \`grisha rules\` lists ${notBlocked === 1 ? "it" : "them"}.`] : []),
       ...(outside.length > 0 ? [`${outside.length} changed ${outside.length === 1 ? "file is" : "files are"} in no planned box: \`grisha outside\` lists ${outside.length === 1 ? "it" : "them"}. ${OUTSIDE}`] : []),
     )
   }

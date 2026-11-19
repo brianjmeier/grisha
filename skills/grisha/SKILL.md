@@ -36,7 +36,7 @@ Show the person `grisha show`, and `grisha show --mermaid` as a diagram where th
 
 ## Rules
 
-`grisha rules` checks the lines this branch adds and prints the files the rules come from; `grisha help rules` prints the format. When the person corrects the same thing a second time, propose a rule for it: in the repository's file when it is about this codebase, in their own when it holds everywhere. Say what you changed and why, then run `grisha rules --approve`, which shows them the change and asks. Never change a rule to get a line through.
+`grisha rules` checks the code against the rules and prints the files they come from; `grisha help rules` prints the format. A rule blocks the lines this branch adds unless its `blocks` says `every line` or `nothing`. Lines already in the code that match are counted, not blocked: leave them unless the task is to clean them up. When the person corrects the same thing a second time, propose a rule for it: in the repository's file when it is about this codebase, in their own when it holds everywhere. Say what you changed and why, then run `grisha rules --approve`, which shows them the change and asks. Never change a rule to get a line through.
 
 ## Where things live
 

@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 type Ran = { code: number; out: string }
@@ -22,7 +22,7 @@ export function realIO(cwd: string): Pick<World, "print" | "read" | "write" | "a
   const prepare = (path: string) => mkdirSync(dirname(path), { recursive: true })
   return {
     print: (text) => console.log(text),
-    read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : null),
+    read: (path) => (existsSync(path) && statSync(path).isFile() ? readFileSync(path, "utf8") : null),
     write: (path, text) => {
       prepare(path)
       writeFileSync(path, text)

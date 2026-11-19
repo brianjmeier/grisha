@@ -10,7 +10,7 @@ Commands
   show                the plan and where each claim stands (--json, --mermaid)
   approve             ask the person to approve the plan; nothing is run before their yes
   run [claim ...]     run the checks and record what happened
-  rules               check the lines this branch adds against the rules (--init, --approve)
+  rules [rule ...]    check the code against the rules, or list every line a rule matches (--init, --approve)
   outside             changed files that no planned box covers
   pr                  the proof as a pull request section
   gate                exit 1 while something is known wrong (--proven: until every claim is proven)
@@ -64,20 +64,25 @@ check   "how" is "script", "test", "drive app", "model" or "person reads". "run"
 
 Any edit to the sheet needs the person's approval again.`
 
-const RULES = `A rule is a pattern that no added line may match, with the fix for what it catches:
+const RULES = `A rule is a pattern that lines of code may not match, with the fix for what it catches:
 
 {
   "files": { "tests": ["**/*.test.*", "**/*.spec.*"] },
   "rules": [
-    { "name": "no-new-comments", "pattern": "^\\\\s*//", "files": ["src/**"],
+    { "name": "no-comments", "pattern": "^\\\\s*//", "files": ["src/**"],
       "fix": "Delete the comment. Rename or restructure until the code says it." },
-    { "name": "no-spies", "pattern": "\\\\bspyOn\\\\(", "files": "tests",
+    { "name": "no-spies", "pattern": "\\\\bspyOn\\\\(", "files": "tests", "blocks": "every line",
       "fix": "Assert what a caller can see instead." }
   ]
 }
 
 files    named groups of file patterns. A rule's "files" is a group's name, or its own list of patterns.
-pattern  a regular expression, tried on each line the branch adds.
+pattern  a regular expression, tried on one line at a time.
+blocks   which of the lines that match are refused. Left out, it is "added lines".
+           "added lines"   a line this branch adds is refused. Lines already in the code are counted.
+           "every line"    every line is refused, whoever wrote it.
+           "nothing"       no line is refused. The ones this branch adds are listed.
+         Start a rule at "added lines". When \`grisha rules\` counts none already in the code, move it to "every line".
 off      { "name": "<rule>", "off": true } turns off a rule that an earlier file has.
 
 Three files are read: the person's for every repository, this repository's committed file, and the

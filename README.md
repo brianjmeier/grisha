@@ -159,7 +159,7 @@ start "<task>"      begin a sheet for a task in this checkout, or pick it up aga
 show                the plan and where each claim stands (--json, --mermaid)
 approve             ask the person to approve the plan; nothing is run before their yes
 run [claim ...]     run the checks and record what happened
-rules               check the lines this branch adds against the rules (--init, --approve)
+rules [rule ...]    check the code against the rules, or list every line a rule matches (--init, --approve)
 outside             changed files that no planned box covers
 pr                  the proof as a pull request section
 gate                exit 1 while something is known wrong (--proven: until every claim is proven)
@@ -224,16 +224,32 @@ $ grisha pr
 
 ## Rules
 
-A rule is a pattern, the files it applies to and the fix to name. Rules look only at lines the branch adds, so existing code never fails and nobody is asked to clean up a colleague's file. In the task above the agent left a comment in a new file:
+A rule is a pattern, the files it applies to and the fix to name. Unless you say otherwise, a rule blocks only the lines the branch adds, so existing code never fails and nobody is asked to clean up a colleague's file. In the task above the agent left a comment in a new file. The repository already had one comment, which is counted and not blocked:
 
 ```console
 $ grisha rules
-src/billing.ts:1  no-new-comments
+src/billing.ts:1  no-comments
   + // TODO: bill unread rows only
   Delete the comment. If it explains a workaround, fix what it works around; if it states a constraint, turn the constraint into a type, a test or a check.
+
+Each rule, the lines it blocks, and the lines already in the code that match it:
+  no-comments             added lines  1 line in 1 file
+  no-effects              added lines  none
+…
+`grisha rules <rule>` lists every line a rule matches.
 ```
 
-The starter set from `grisha rules --init`: no new comments, effects, timers, lint suppressions, optional clocks or errors read by their wording, and in tests no skips, mocks, spies, fake timers, real clock, sleeps, casts, SQL or hand-set database role. Every catch is logged once to `catches.jsonl`, which is your record of what the rules actually stop.
+A rule's `blocks` says which matching lines are refused, so you can bring a rule in gradually:
+
+| `blocks` | A line the branch adds | A line already in the code |
+|---|---|---|
+| `"added lines"`, when left out | blocked | counted |
+| `"every line"` | blocked | blocked |
+| `"nothing"` | listed | counted |
+
+Start a rule at `"added lines"`. The count is what is left to clean up, and `grisha rules no-comments` lists each line. When the count reaches none, move the rule to `"every line"` and it stays that way. `"nothing"` is for a rule you want to see reported before you decide to enforce it.
+
+The starter set from `grisha rules --init`: no comments, effects, timers, lint suppressions, optional clocks or errors read by their wording, and in tests no skips, mocks, spies, fake timers, real clock, sleeps, casts, SQL or hand-set database role. All of them block added lines. Every blocked line is logged once to `catches.jsonl`, which is your record of what the rules actually stop.
 
 Rules are read from three files, in this order. A later file adds rules and file groups, replaces one of the same name, or turns a rule off:
 
@@ -249,7 +265,7 @@ A rule's `files` is a list of patterns, or the name of a file group. The starter
 {
   "files": { "tests": ["**/*.test.ts", "e2e/**"] },
   "rules": [
-    { "name": "no-act", "pattern": "\\bact\\(", "files": "tests", "fix": "Wait for what the user sees." },
+    { "name": "no-act", "pattern": "\\bact\\(", "files": "tests", "blocks": "every line", "fix": "Wait for what the user sees." },
     { "name": "no-casts-in-tests", "off": true }
   ]
 }
@@ -261,7 +277,7 @@ A change to the rules does not take effect quietly. In the task above the agent 
 $ grisha gate
 Before this goes further:
 - The rules here are not the ones the person approved:
-  no longer in force: no-new-comments
+  no longer in force: no-comments
   Run `grisha rules --approve`: the person is shown what changed and asked.
 (exit 1)
 ```
@@ -271,7 +287,7 @@ The agent asks, and this is what your app shows you:
 ```console
 $ grisha rules --approve
 Rules that differ from the ones you approved:
-  no longer in force: no-new-comments
+  no longer in force: no-comments
 ```
 
 That is what happens when either of your two files changes: the gate refuses until you have seen the change and said yes. The committed file is read from the base branch, so a branch's edit to it changes nothing until it is merged, and the pull request is its review.

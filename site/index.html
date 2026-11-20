@@ -13,25 +13,27 @@
 </head>
 <body>
 <main class="page">
-  <header class="hero">
-    <p class="said">
-      <span class="circled">Done, tests pass.<svg viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M 92 24 C 240 -4, 520 6, 572 60 C 612 106, 470 152, 290 152 C 120 152, 6 126, 14 78 C 22 32, 150 12, 338 14"/></svg></span>
-      <span class="who">your coding agent, again</span>
+  <header class="top">
+    <h1 class="pen name">Grisha</h1>
+    <p class="get">
+      <span class="install"><code><span class="prompt" aria-hidden="true">$ </span>npm install -g @brianmeier/grisha</code><button type="button" class="copy">copy</button></span>
+      <a href="https://github.com/brianjmeier/grisha">Source on GitHub</a>
     </p>
-    <p class="pen note">Show your work.</p>
-    <h1 class="pen signed"><span aria-hidden="true">&mdash; </span>Grisha</h1>
-    <div class="intro">
-      <p class="lede">Grisha is a command-line tool that marks a coding agent's work. For each task the agent writes a sheet: what must be true when the work is finished, and the command that checks each claim. You approve the sheet. Grisha runs the checks itself, so the agent never marks its own work. Its rules keep the lines you ban out of new code.</p>
-      <p class="get">
-        <span class="install"><code><span class="prompt" aria-hidden="true">$ </span>npm install -g @brianmeier/grisha</code><button type="button" class="copy">copy</button></span>
-        <a href="https://github.com/brianjmeier/grisha">Source on GitHub</a>
-      </p>
-    </div>
   </header>
 
-  <section class="demo" aria-labelledby="demo-title">
-    <h2 id="demo-title">One task, from &ldquo;done&rdquo; to proven</h2>
+  <section class="demo" aria-label="One task, from done to proven">
     <div class="stage">
+      <div class="opening go" data-title="Your agent says it is done">
+        <p class="said">
+          <span class="circled">Done, tests pass.<svg viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M 92 24 C 240 -4, 520 6, 572 60 C 612 106, 470 152, 290 152 C 120 152, 6 126, 14 78 C 22 32, 150 12, 338 14"/></svg></span>
+          <span class="who">your coding agent, again</span>
+        </p>
+        <p class="pen note">Show your work.</p>
+        <p class="pen signed">&mdash; Grisha</p>
+        <p class="lede">Grisha is a command-line tool that makes a coding agent prove its work: a check that was run for every claim, and rules that keep banned lines out of new code.</p>
+      </div>
+
+      <div class="task-scene">
       <div class="paper">
         <p class="task">Count only unread rows <span class="pen approved" data-approved>approved. &mdash; you</span></p>
         <ul class="claims">
@@ -62,21 +64,21 @@
 
       <ol class="flow">
         <li>
-          <h3>The agent writes a sheet</h3>
+          <h2>The agent writes a sheet</h2>
           <p>You give your agent a task and say &ldquo;use grisha&rdquo;. It writes down what must be true when the work is finished, and the command that checks each claim.</p>
 <pre><b>$ grisha start "Count only unread rows"</b>
 New sheet: ~/.grisha/repos/shop/tasks/count-only-unread-rows/sheet.json
 Write the plan into it, then run `grisha next`.</pre>
         </li>
         <li>
-          <h3>You approve it</h3>
+          <h2>You approve it</h2>
           <p>Your agent app shows you the plan and asks. Nothing is run before your yes, and any later change to the plan asks you again.</p>
 <pre><b>$ grisha approve</b>
 The person approved the plan.
 Next: counts-unread, still-a-number are not run. Run `grisha run counts-unread still-a-number`. A check for new behaviour has to fail before the change is made.</pre>
         </li>
         <li>
-          <h3>The new check fails first</h3>
+          <h2>The new check fails first</h2>
           <p>Grisha runs the checks before any code changes. A check for new behaviour has to fail now, or it is not checking anything.</p>
 <pre><b>$ grisha run counts-unread still-a-number</b>
 counts-unread: failed (exit 1)
@@ -86,7 +88,7 @@ still-a-number: passed
 plan approved · 1 unit · 3 claims: 1 failing, 1 passes, never seen failing, 1 no check</pre>
         </li>
         <li>
-          <h3>The agent makes the change</h3>
+          <h2>The agent makes the change</h2>
           <p>The failing check passes now, so that claim is proven. The change touched code another check covers, so that one is out of date.</p>
 <pre><b>$ grisha run counts-unread</b>
 counts-unread: passed
@@ -96,7 +98,7 @@ plan approved · 1 unit · 3 claims: 1 proven, 1 stale, 1 no check
 Next: still-a-number is stale. Run `grisha run still-a-number`. Code it covers changed after it last passed.</pre>
         </li>
         <li>
-          <h3>The gate stops the commit</h3>
+          <h2>The gate stops the commit</h2>
           <p>The agent tries to commit anyway. Your commit hook asks the gate, which refuses while a check is failing or out of date, or a rule is broken.</p>
 <pre><b>$ grisha gate</b>
 Before this goes further:
@@ -104,7 +106,7 @@ Before this goes further:
 (exit 1)</pre>
         </li>
         <li>
-          <h3>A check has to be seen failing</h3>
+          <h2>A check has to be seen failing</h2>
           <p>Run again, the stale check passes. It passed before the change too, so it has shown nothing. The agent breaks the code on purpose, watches the check fail, and restores the code.</p>
 <pre><b>$ grisha run still-a-number</b>
 still-a-number: passed
@@ -120,7 +122,7 @@ still-a-number: passed
 plan approved · 1 unit · 3 claims: 2 proven, 1 no check</pre>
         </li>
         <li>
-          <h3>A rule blocks a line the agent added</h3>
+          <h2>A rule blocks a line the agent added</h2>
           <p>A rule is a pattern that lines of code may not match: a comment, a skipped test, a mock. It blocks what a branch adds and only counts what was already there, so you can turn one on in an old codebase today.</p>
 <pre><b>$ grisha rules</b>
 src/billing.ts:1  no-comments
@@ -130,7 +132,7 @@ Each rule, the lines it blocks, and the lines already in the code that match it:
   no-comments             added lines  1 line in 1 file</pre>
         </li>
         <li>
-          <h3>Nothing is left</h3>
+          <h2>Nothing is left</h2>
           <p>No command can settle the last claim, so the agent leaves it for you to read. Every claim with a check is proven and no rule is broken.</p>
 <pre><b>$ grisha next</b>
 Count only unread rows
@@ -140,7 +142,7 @@ Nothing is left: every claim with a check is proven and no rule is broken. `gris
 Left for the person to read: other-tenants, another tenant's rows never count.</pre>
         </li>
         <li>
-          <h3>The proof goes in the pull request</h3>
+          <h2>The proof goes in the pull request</h2>
           <p>Every claim, the command that checked it and where it stands, with what is left for you to read.</p>
 <pre><b>$ grisha pr</b>
 ## How this was proven
@@ -151,6 +153,7 @@ Left for the person to read: other-tenants, another tenant's rows never count.</
    - another tenant's rows never count: **for you to read**, by person reads</pre>
         </li>
       </ol>
+      </div>
     </div>
   </section>
 

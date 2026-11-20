@@ -19,6 +19,7 @@ const bothProven = { ...afterChange, "still-a-number": `${TICK}proven. It failed
 const settled = { ...bothProven, "other-tenants": "for you to read.", read: true }
 const SHEET_AT_STEP = [
   {},
+  {},
   { approved: true },
   { approved: true, "counts-unread": `${CROSS}failing. Good.`, "still-a-number": "passes. Never seen failing." },
   afterChange,
@@ -30,7 +31,10 @@ const SHEET_AT_STEP = [
 ]
 
 function play(demo) {
+  const opening = demo.querySelector(".opening")
+  const task = demo.querySelector(".task-scene")
   const steps = [...demo.querySelectorAll(".flow li")]
+  const titles = [opening.dataset.title, ...steps.map((step) => step.querySelector("h2").textContent)]
   const paper = demo.querySelector(".paper")
   const marks = [...paper.querySelectorAll("[data-mark]")]
   const how = paper.querySelector("[data-how]")
@@ -45,30 +49,32 @@ function play(demo) {
 
   const controls = document.createElement("div")
   controls.className = "controls"
-  controls.innerHTML = `<button type="button" data-go="back">back</button><ol class="numbers">${steps.map((_, index) => `<li><button type="button" data-step="${index}">${index + 1}</button></li>`).join("")}</ol><button type="button" data-go="next">next</button><button type="button" data-go="toggle"></button>`
+  controls.innerHTML = `<button type="button" data-go="back">back</button><ol class="numbers">${titles.map((_, index) => `<li><button type="button" data-step="${index}">${index + 1}</button></li>`).join("")}</ol><button type="button" data-go="next">next</button><button type="button" data-go="toggle"></button>`
   demo.querySelector(".stage").before(controls)
   const toggle = controls.querySelector('[data-go="toggle"]')
-  for (const button of controls.querySelectorAll("[data-step]")) {
-    const index = Number(button.dataset.step)
-    button.setAttribute("aria-label", `Step ${index + 1}: ${steps[index].querySelector("h3").textContent}`)
-  }
+  const numbers = [...controls.querySelectorAll("[data-step]")]
+  numbers.forEach((button, index) => button.setAttribute("aria-label", `Step ${index + 1}: ${titles[index]}`))
 
+  const restart = (element, name, on) => {
+    element.classList.remove(name)
+    void element.offsetWidth
+    if (on) element.classList.add(name)
+  }
   const write = (element, html) => {
     if (element.dataset.shown === html) return
     element.dataset.shown = html
     element.innerHTML = html
-    element.classList.remove("fresh")
-    void element.offsetWidth
-    if (html) element.classList.add("fresh")
+    restart(element, "fresh", Boolean(html))
   }
   const show = (index) => {
-    at = (index + steps.length) % steps.length
+    const from = at
+    at = (index + titles.length) % titles.length
     const sheet = SHEET_AT_STEP[at]
-    steps.forEach((step, each) => step.classList.toggle("now", each === at))
-    for (const button of controls.querySelectorAll("[data-step]")) {
-      if (Number(button.dataset.step) === at) button.setAttribute("aria-current", "step")
-      else button.removeAttribute("aria-current")
-    }
+    opening.classList.toggle("away", at !== 0)
+    task.classList.toggle("away", at === 0)
+    if (at === 0 && from !== 0) restart(opening, "go", true)
+    steps.forEach((step, each) => step.classList.toggle("now", each === at - 1))
+    numbers.forEach((button, each) => (each === at ? button.setAttribute("aria-current", "step") : button.removeAttribute("aria-current")))
     for (const mark of marks) write(mark, sheet[mark.dataset.mark] ?? "")
     write(verdict, sheet.verdict ?? "")
     how.textContent = sheet.read ? "by person reads" : "by nothing yet"

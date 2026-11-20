@@ -3,25 +3,23 @@
 @font-face { font-family: "Nothing You Could Do"; src: url("./fonts/nothing-you-could-do-400.woff2") format("woff2"); font-weight: 400; font-display: block; }
 
 /* A typed sheet, marked by hand. The agent types, Grisha marks in red pen, and what is
-   yours to do (a link, a copy button) is in blue pen. */
+   yours (your approval, a link, a button) is in blue pen. */
 :root {
-  --paper: #f5f7f8;
+  --desk: #f5f7f8;
+  --paper: #ffffff;
   --typed: #20242b;
   --faded: #5a6370;
   --rule: #d3dce4;
-  --margin-line: #f0a3aa;
   --pen: #d3222a;
   --yours: #2148b8;
   --font-typed: "Courier Prime", "Courier New", Courier, monospace;
   --font-pen: "Nothing You Could Do", "Bradley Hand", cursive;
   --side: clamp(16px, 4vw, 48px);
-  --margin: 216px;
-  --gutter: 48px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #14181d; --typed: #e4e8ec; --faded: #98a2ae; --rule: #2a323b; --margin-line: #6b3136;
+    --desk: #14181d; --paper: #1b2027; --typed: #e4e8ec; --faded: #98a2ae; --rule: #2d3640;
     --pen: #ff6a66; --yours: #8eadff;
     color-scheme: dark;
   }
@@ -29,82 +27,101 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--paper); color: var(--typed); font: 17px/1.6 var(--font-typed); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-p, h1, h2, h3, ol, pre { margin: 0; }
+body { background: var(--desk); color: var(--typed); font: 17px/1.6 var(--font-typed); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+p, h1, h2, h3, ol, ul, pre { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
 a { color: var(--yours); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
-a:focus-visible, .copy:focus-visible { outline: 2px solid var(--yours); outline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--yours); outline-offset: 3px; }
 code { font: inherit; }
+button { all: unset; cursor: pointer; color: var(--yours); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+button:hover { text-decoration-thickness: 2px; }
 
 .pen { font-family: var(--font-pen); font-weight: 400; color: var(--pen); }
+.pen svg { flex: none; overflow: visible; }
+.pen path { fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
 
-/* The sheet, and the margin line that runs down all of it. */
-.sheet { position: relative; max-width: 1240px; margin: 0 auto; padding: 0 var(--side); }
-.sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--side) + var(--margin) + var(--gutter) / 2); width: 2px; background: var(--margin-line); }
-.row { display: grid; grid-template-columns: var(--margin) minmax(0, 1fr); column-gap: var(--gutter); }
-.row > .body { grid-column: 2; min-width: 0; }
+.page { max-width: 1160px; margin: 0 auto; padding: 0 var(--side); }
 
 /* ---------- what the agent said, and what Grisha wrote on it ---------- */
-.hero { display: grid; grid-template-columns: var(--margin) minmax(0, 1fr); column-gap: var(--gutter); padding: clamp(56px, 11vh, 128px) 0 clamp(56px, 9vh, 104px); }
-.said { grid-column: 2; }
-.circled { position: relative; display: inline-block; font: 700 clamp(30px, 6.1vw, 78px)/1.1 var(--font-typed); letter-spacing: -0.02em; white-space: nowrap; }
+.hero { padding: clamp(56px, 11vh, 128px) 0 clamp(56px, 9vh, 104px); }
+.circled { position: relative; display: inline-block; font: 700 clamp(30px, 6.4vw, 84px)/1.1 var(--font-typed); letter-spacing: -0.02em; white-space: nowrap; }
 .circled svg { position: absolute; left: -9%; top: -40%; width: 118%; height: 180%; overflow: visible; pointer-events: none; }
 .circled path { fill: none; stroke: var(--pen); stroke-width: 3.5; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke-dasharray: 1; animation: draw 620ms ease-out 500ms both; }
 .who { display: block; margin-top: clamp(22px, 3.6vw, 44px); color: var(--faded); }
-.note { grid-column: 1 / -1; margin: clamp(10px, 2.2vw, 30px) 0 0 clamp(8px, 9vw, 150px); font-size: clamp(46px, 8.2vw, 112px); line-height: 1.05; transform: rotate(-4deg); transform-origin: left center; animation: write 700ms ease-out 1150ms both; }
-.signed { grid-column: 1 / -1; justify-self: start; margin: clamp(2px, 0.6vw, 8px) 0 0 clamp(120px, 44vw, 640px); font-size: clamp(34px, 5vw, 66px); line-height: 1.1; transform: rotate(-4deg); animation: write 420ms ease-out 1900ms both; }
+.note { margin: clamp(10px, 2.2vw, 30px) 0 0 clamp(0px, 5vw, 72px); font-size: clamp(46px, 8.6vw, 118px); line-height: 1.05; transform: rotate(-4deg); transform-origin: left center; animation: write 700ms ease-out 1150ms both; }
+.signed { width: fit-content; margin: clamp(2px, 0.6vw, 8px) 0 0 clamp(120px, 46vw, 600px); font-size: clamp(34px, 5vw, 66px); line-height: 1.1; transform: rotate(-4deg); animation: write 420ms ease-out 1900ms both; }
 @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes write { from { clip-path: inset(-30% 100% -30% -5%); } to { clip-path: inset(-30% -5% -30% -5%); } }
-@media (prefers-reduced-motion: reduce) {
-  .circled path, .note, .signed { animation: none; }
-}
-.intro { grid-column: 2; display: grid; gap: 26px; margin-top: clamp(40px, 7vh, 80px); }
-.lede { font-size: clamp(17px, 1.45vw, 19px); max-width: 64ch; text-wrap: pretty; }
+@keyframes write { from { clip-path: inset(-40% 100% -40% -5%); } to { clip-path: inset(-40% -5% -40% -5%); } }
+.intro { display: grid; gap: 26px; margin-top: clamp(40px, 7vh, 80px); }
+.lede { font-size: clamp(17px, 1.45vw, 19px); max-width: 66ch; text-wrap: pretty; }
 .get { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; }
 
 .install { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; max-width: 100%; padding: 9px 14px; border: 1.5px solid var(--typed); }
 .install code { font-weight: 700; min-width: 0; overflow-wrap: anywhere; user-select: all; }
 .install .prompt { font-weight: 400; color: var(--faded); user-select: none; }
-.copy { all: unset; cursor: pointer; color: var(--yours); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.copy:hover { text-decoration-thickness: 2px; }
 
-/* ---------- the claims ---------- */
-.heading { padding: clamp(40px, 7vh, 72px) 0 clamp(8px, 2vh, 20px); border-top: 1px solid var(--rule); }
-.heading h2 { font: 700 clamp(22px, 2.2vw, 28px)/1.25 var(--font-typed); }
-.status { margin-top: 6px; color: var(--faded); }
+/* ---------- one task: the sheet on the left is marked as the steps on the right go by ---------- */
+.demo { padding: clamp(40px, 8vh, 88px) 0; border-top: 1px solid var(--rule); }
+.demo h2, .try h2 { font: 700 clamp(23px, 2.4vw, 31px)/1.25 var(--font-typed); text-wrap: balance; }
+.stage { display: grid; gap: clamp(28px, 4vw, 56px); margin-top: clamp(24px, 4vh, 40px); align-items: start; }
 
-.claim { padding: clamp(36px, 7vh, 72px) 0; border-top: 1px solid var(--rule); }
-.heading + .claim { border-top: 0; }
-.mark { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; align-self: start; gap: 2px 10px; padding-top: 2px; font-size: 27px; line-height: 1.15; text-align: right; transform: rotate(-3deg); }
-.mark svg { flex: none; width: 46px; height: 38px; overflow: visible; }
-.mark path { fill: none; stroke: var(--pen); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
-.claim .body { display: grid; gap: 14px; justify-items: start; }
-.claim h3 { font: 700 clamp(20px, 1.9vw, 25px)/1.32 var(--font-typed); max-width: 34em; text-wrap: balance; }
-.role { font-weight: 400; color: var(--faded); }
-.by { color: var(--faded); margin-top: -8px; }
-.by code { color: var(--typed); font-weight: 700; }
-.claim .body > p { max-width: 68ch; text-wrap: pretty; }
-.claim pre { justify-self: stretch; margin-top: 10px; padding: 4px 0 4px 20px; border-left: 2px solid var(--rule); font: 14.5px/1.7 var(--font-typed); color: var(--faded); white-space: pre-wrap; overflow-wrap: anywhere; }
-.claim pre b { color: var(--typed); }
+.paper { position: relative; display: grid; gap: 18px; padding: clamp(20px, 2.6vw, 32px); background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 1px 1px rgba(20, 24, 30, 0.05), 0 22px 44px -26px rgba(20, 24, 30, 0.35); font-size: 15.5px; line-height: 1.5; }
+.paper .task { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 16px; font-weight: 700; font-size: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.claims { display: grid; gap: 10px; }
+.claims .role, .claims .how { color: var(--faded); }
+.mark { display: flex; align-items: flex-end; gap: 10px; min-height: 46px; padding: 4px 0 0 18px; font-size: 25px; line-height: 1.15; transform: rotate(-2.5deg); transform-origin: left center; }
+.mark svg { width: 40px; height: 34px; }
+/* The last slot holds either the line a rule blocked or Grisha's verdict, stacked in one cell. */
+.last { display: grid; padding-top: 12px; border-top: 1px solid var(--rule); }
+.last > * { grid-area: 1 / 1; align-self: start; }
+.added { display: grid; gap: 2px; justify-items: start; }
+.added.off { visibility: hidden; }
+.added .file { color: var(--faded); }
+.added .line { position: relative; }
+.added .line::after { content: ""; position: absolute; left: -6px; right: -10px; top: 52%; height: 3px; border-radius: 3px; background: var(--pen); transform: rotate(-1.2deg); transform-origin: left center; }
+.added .pen { font-size: 25px; line-height: 1.2; padding-left: 18px; transform: rotate(-2.5deg); transform-origin: left center; }
+.approved { color: var(--yours); font-size: 25px; line-height: 1; transform: rotate(-3deg); }
+.verdict { font-size: clamp(27px, 2.7vw, 35px); line-height: 1.15; min-height: 1.3em; transform: rotate(-3deg); transform-origin: left center; }
 
-.steps { list-style: none; padding: 0; display: grid; gap: 10px; justify-items: start; margin-top: 6px; }
-.links { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 10px; }
+.flow { display: grid; gap: clamp(32px, 5vh, 48px); min-width: 0; }
+.flow li { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.flow h3 { font: 700 clamp(20px, 1.9vw, 25px)/1.3 var(--font-typed); }
+.flow p { max-width: 62ch; text-wrap: pretty; }
+.flow pre { margin-top: 6px; padding: 4px 0 4px 20px; border-left: 2px solid var(--rule); font: 14.5px/1.7 var(--font-typed); color: var(--faded); white-space: pre-wrap; overflow-wrap: anywhere; }
+.flow pre b { color: var(--typed); }
+
+/* Once the page's script runs, one step shows at a time. Every step is stacked in the
+   same cell, so the stage is as tall as its tallest step and never jumps. */
+.demo.plays .flow { gap: 0; }
+.demo.plays .flow li { grid-area: 1 / 1; visibility: hidden; }
+.demo.plays .flow li.now { visibility: visible; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 18px; }
+.numbers { display: flex; flex-wrap: wrap; gap: 2px; }
+.numbers button { display: grid; place-items: center; width: 34px; height: 34px; color: var(--faded); text-decoration: none; border: 2px solid transparent; }
+.numbers button:hover { color: var(--typed); }
+.numbers button[aria-current] { color: var(--typed); font-weight: 700; border-color: var(--pen); border-radius: 50% 44% 52% 46% / 46% 54% 44% 52%; transform: rotate(-6deg); }
+.fresh { animation: write 420ms ease-out both; }
+.fresh path { stroke-dasharray: 1; animation: draw 300ms ease-out both; }
+
+@media (min-width: 940px) {
+  .stage { grid-template-columns: minmax(0, 430px) minmax(0, 1fr); }
+  .paper { position: sticky; top: 24px; }
+  .demo.plays .paper { position: relative; top: 0; }
+}
+
+/* ---------- try it ---------- */
+.try { display: grid; gap: 18px; justify-items: start; padding: clamp(40px, 8vh, 88px) 0 88px; border-top: 1px solid var(--rule); }
+.try > p { max-width: 66ch; text-wrap: pretty; }
+.commands { display: grid; gap: 10px; justify-items: start; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 6px; }
 .links span { color: var(--faded); }
 
-.foot { padding: clamp(36px, 6vh, 64px) 0 72px; border-top: 1px solid var(--rule); }
-.foot .body { display: grid; gap: 12px; font-size: 14.5px; color: var(--faded); }
-.foot p { max-width: 72ch; text-wrap: pretty; }
-
-/* ---------- a narrow sheet: the margin closes up and the marks sit above their claims ---------- */
-@media (max-width: 860px) {
-  :root { --margin: 0px; --gutter: 0px; }
-  .sheet { padding-left: calc(var(--side) + 18px); }
-  .sheet::before { left: calc(var(--side) - 2px); }
-  .row, .hero { grid-template-columns: minmax(0, 1fr); }
-  .row > .body, .said, .intro { grid-column: 1; }
-  .mark { justify-content: flex-start; text-align: left; margin-bottom: 12px; transform-origin: left center; }
-  .note { margin-left: 0; }
-  .role { display: block; }
+@media (max-width: 520px) {
   .install { font-size: 15px; }
-  .signed { margin-left: clamp(60px, 34vw, 300px); }
+  .numbers { order: -1; flex-basis: 100%; }
+  .paper { font-size: 14.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .circled path, .note, .signed, .fresh, .fresh path { animation: none; }
 }

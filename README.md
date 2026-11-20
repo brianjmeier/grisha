@@ -2,14 +2,14 @@
 
 Grisha makes a coding agent show that its work is done, instead of saying so. It is two things behind one command:
 
-- **A check for every claim.** The agent writes down what must be true when the work is finished, and the command that checks each claim. You approve that list. Grisha runs the checks itself, and a claim counts as proven only when its check has failed once and passes now.
+- **A check for every claim.** The agent writes down what must be true when the work is finished, and the command that checks each claim. You approve that list. Grisha runs the checks itself, and a claim counts as validated only when its check has failed once and passes now.
 - **A linter you can bring in gradually.** A rule is a pattern that lines of code may not match: a comment, a skipped test, a mock. A rule blocks the lines a branch adds and only counts the ones already in the code, so you can turn it on in an old codebase today.
 
 `grisha gate` exits 1 while a check is failing or out of date, or a rule is broken. Put it in a commit hook and unfinished work stops there.
 
 The agent types the commands. You approve the plan and read the result.
 
-Grisha is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. `proven` means only this: the check failed once, passes now, and the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little.
+Grisha is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. `validated` means only this: the check failed once, passes now, and the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little. Support for Lean and TLA+, for the parts of a codebase you want formally proven, is coming soon.
 
 ## What you gain
 
@@ -106,7 +106,7 @@ counts-unread: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evide
 Next: still-a-number is stale. Run `grisha run still-a-number`. Code it covers changed after it last passed.
 ```
 
-The first claim is proven: its check failed, the code changed, and it passes. The change made the other check out of date. The agent tries to commit anyway, and the commit hook asks the gate. Run again, that check passes, but it passed before the change too and has never shown it can fail. So the agent breaks the code on purpose, runs the check, restores the code and runs it once more:
+The first claim is validated: its check failed, the code changed, and it passes. The change made the other check out of date. The agent tries to commit anyway, and the commit hook asks the gate. Run again, that check passes, but it passed before the change too and has never shown it can fail. So the agent breaks the code on purpose, runs the check, restores the code and runs it once more:
 
 ```console
 $ grisha gate
@@ -120,13 +120,13 @@ still-a-number: failed (exit 1)    ~/.grisha/repos/shop/tasks/count-only-unread-
 …
 still-a-number: passed    ~/.grisha/repos/shop/tasks/count-only-unread-rows/evidence/still-a-number-4.txt
 …
-plan approved · 1 unit · 3 claims: 2 proven, 1 no check
+plan approved · 1 unit · 3 claims: 2 validated, 1 no check
 ```
 
 The commit goes through. The push does not, because the push hook asks for every claim to be settled and one still has no check:
 
 ```console
-$ grisha gate --proven
+$ grisha gate --validated
 Before this goes further:
 - other-tenants has no check. In the sheet, set its "check" to { "how": "script", "run": "<command>" }, or to { "how": "person reads" } when no command can settle it.
 (exit 1)
@@ -137,7 +137,7 @@ No command can settle that claim, so the agent leaves it for you to read. That i
 ```console
 $ grisha next
 Count only unread rows
-plan changed since it was approved · 1 unit · 3 claims: 2 proven, 1 for you to read
+plan changed since it was approved · 1 unit · 3 claims: 2 validated, 1 for you to read
 
 Next: The plan changed after it was approved. Run `grisha approve`: the person is shown the plan and asked.
 ```
@@ -147,14 +147,14 @@ After your yes, the loop ends:
 ```console
 $ grisha next
 Count only unread rows
-plan approved · 1 unit · 3 claims: 2 proven, 1 for you to read
+plan approved · 1 unit · 3 claims: 2 validated, 1 for you to read
 
-Nothing is left: every claim with a check is proven and no rule is broken. `grisha pr` prints the proof for the pull request.
+Nothing is left: every claim with a check is validated and no rule is broken. `grisha pr` prints the record for the pull request.
 Left for the person to read: other-tenants, another tenant's rows never count.
 1 changed file is in no planned box: `grisha outside` lists it. Say why each one changed in the pull request, or add a box that covers it to the sheet.
 ```
 
-Along the way the agent also edited `src/billing.ts`, which the plan never mentioned. `grisha outside` names it, and `grisha pr` prints the proof for the pull request body with that file in it:
+Along the way the agent also edited `src/billing.ts`, which the plan never mentioned. `grisha outside` names it, and `grisha pr` prints the record for the pull request body with that file in it:
 
 ```console
 $ grisha outside
@@ -162,11 +162,11 @@ Changed, but in no planned box:
   src/billing.ts
 …
 $ grisha pr
-## How this was proven
+## How this was validated
 
 1. **count unread rows** (change)
-   - the badge shows the number of unread rows: **proven**, by script: sh test/unread.test.sh
-   - the badge still shows a number: **proven**, by script: sh test/number.test.sh
+   - the badge shows the number of unread rows: **validated**, by script: sh test/unread.test.sh
+   - the badge still shows a number: **validated**, by script: sh test/number.test.sh
    - another tenant's rows never count: **for you to read**, by person reads
 
 ## Left for a person to read
@@ -257,7 +257,7 @@ You say no, and the agent puts the rule back and deletes the comment. The same h
 
 ## Hooks
 
-Grisha does not decide when it runs. `grisha gate` exits 1 while a check is failing or out of date, a rule is broken, or your rules changed without your yes. `grisha gate --proven` also exits 1 until every claim is proven or left for you to read. Call them wherever you want work stopped. In a checkout with no task started, the gate checks only the rules.
+Grisha does not decide when it runs. `grisha gate` exits 1 while a check is failing or out of date, a rule is broken, or your rules changed without your yes. `grisha gate --validated` also exits 1 until every claim is validated or left for you to read. Call them wherever you want work stopped. In a checkout with no task started, the gate checks only the rules.
 
 Git hooks work for every agent app. `git rev-parse --git-path hooks` prints the folder to put them in:
 
@@ -266,7 +266,7 @@ Git hooks work for every agent app. `git rev-parse --git-path hooks` prints the 
 exec grisha gate
 
 # pre-push
-exec grisha gate --proven
+exec grisha gate --validated
 ```
 
 An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you anything. In Claude Code, a hook in `settings.json` has no such flag, and it is what puts the plan in front of you when the agent runs `grisha approve`. You name the commands it stops:
@@ -275,7 +275,7 @@ An agent can skip git hooks with `--no-verify`, and a git hook cannot ask you an
 {
   "hooks": {
     "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command",
-      "command": "grisha hook --before 'git commit' --proven-before 'git push' --proven-before 'gh pr create' || exit 2" }] }]
+      "command": "grisha hook --before 'git commit' --validated-before 'git push' --validated-before 'gh pr create' || exit 2" }] }]
   }
 }
 ```
@@ -292,13 +292,13 @@ Without the Claude Code hook, `grisha approve` works only in a terminal, where i
 
 | Status | Meaning | Refused by |
 |---|---|---|
-| `no check` | Nobody has said how to check it. | `gate --proven` |
-| `for you to read` | Left to a person on purpose. Never counted as proven. | |
-| `not run` | Its check has not been run. | `gate --proven` |
+| `no check` | Nobody has said how to check it. | `gate --validated` |
+| `for you to read` | Left to a person on purpose. Never counted as validated. | |
+| `not run` | Its check has not been run. | `gate --validated` |
 | `failing` | Its check failed the last time it ran. | `gate` |
 | `stale` | It passed, then a file in the boxes it covers changed. | `gate` |
-| `passes, never seen failing` | It passes, but has not shown it can fail. | `gate --proven` |
-| `proven` | Its check failed once, passes now, and its code has not changed since. | |
+| `passes, never seen failing` | It passes, but has not shown it can fail. | `gate --validated` |
+| `validated` | Its check failed once, passes now, and its code has not changed since. | |
 
 Status is worked out on every call from the recorded runs and the files as they are. Nothing stores it, so it cannot go out of date. Only runs of the command a claim has now count, so changing a check's command starts it again at `not run`.
 
@@ -312,8 +312,8 @@ approve             ask the person to approve the plan; nothing is run before th
 run [claim ...]     run the checks and record what happened
 rules [rule ...]    check the code against the rules, or list every line a rule matches (--init, --approve)
 outside             changed files that no planned box covers
-pr                  the proof as a pull request section
-gate                exit 1 while something is known wrong (--proven: until every claim is proven)
+pr                  the record as a pull request section
+gate                exit 1 while something is known wrong (--validated: until every claim is validated)
 hook                the gate as a Claude Code PreToolUse hook
 home                where this repository's sheets and verification skills live
 help [topic]        topics: sheet, rules, hooks

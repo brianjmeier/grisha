@@ -13,8 +13,8 @@ Commands
   run [claim ...]     run the checks and record what happened
   rules [rule ...]    check the code against the rules, or list every line a rule matches (--init, --approve)
   outside             changed files that no planned box covers
-  pr                  the proof as a pull request section
-  gate                exit 1 while something is known wrong (--proven: until every claim is proven)
+  pr                  the record as a pull request section
+  gate                exit 1 while something is known wrong (--validated: until every claim is validated)
   hook                the gate as a Claude Code PreToolUse hook
   home                where this repository's sheets and verification skills live
   help [topic]        topics: sheet, rules, hooks
@@ -28,7 +28,7 @@ Where a claim stands
   failing                      its check failed the last time it ran
   stale                        it passed, and code it covers has changed since
   passes, never seen failing   it passes, and has not shown that it can fail
-  proven                       it failed once, passes now, and the code it covers is unchanged since`
+  validated                    it failed once, passes now, and the code it covers is unchanged since`
 
 const SHEET = `The sheet is the plan for one task, as JSON:
 
@@ -98,14 +98,14 @@ const HOOKS = `When grisha runs is yours to choose. The two usual places:
 
 Git hooks, for any agent app. \`git rev-parse --git-path hooks\` prints the folder to put them in.
   pre-commit    exec grisha gate
-  pre-push      exec grisha gate --proven
+  pre-push      exec grisha gate --validated
 
 Claude Code, in settings.json. An agent cannot skip it, and it is what lets the person approve in the app:
   { "hooks": { "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command":
-    "grisha hook --before 'git commit' --proven-before 'git push' --proven-before 'gh pr create' || exit 2" }] }] } }
+    "grisha hook --before 'git commit' --validated-before 'git push' --validated-before 'gh pr create' || exit 2" }] }] } }
 
   --before "<words>"          refuse a command that contains these words while something is known wrong
-  --proven-before "<words>"   refuse it until every claim is proven
+  --validated-before "<words>"   refuse it until every claim is validated
   With neither, the hook only asks the person when the command is an approval.
   The words are looked for in the command as typed, so \`git -C <folder> commit\` is not \`git commit\`.
   Git hooks see every commit and push however it was typed.

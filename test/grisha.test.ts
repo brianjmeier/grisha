@@ -106,17 +106,17 @@ test("only the person approves, and a changed plan needs approving again", async
   expect((await run(["show"])).out).toContain("plan changed since it was approved")
 })
 
-test("a claim is proven only after its check was seen failing, and goes stale when its box changes", async () => {
+test("a claim is validated only after its check was seen failing, and goes stale when its box changes", async () => {
   const { run, plan, put } = scene()
   await plan()
   await run(["approve"])
   expect((await run(["run"])).out).toContain("1 failing")
 
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run", "counts-unread"])).out).toContain("1 proven")
+  expect((await run(["run", "counts-unread"])).out).toContain("1 validated")
 
   put("src/other/unrelated.ts", "export const one = 2\n")
-  expect((await run(["show"])).out).toContain("[proven]")
+  expect((await run(["show"])).out).toContain("[validated]")
 
   put("src/inbox/count.sh", "echo 2 # recount\n")
   expect((await run(["show"])).out).toContain("[stale]")
@@ -137,29 +137,29 @@ test("a claim about a box its unit does not change goes stale when that box chan
   expect(shown).toContain("the other module still loads    [stale]")
 })
 
-test("a check that never failed is not called proven until it is seen failing", async () => {
+test("a check that never failed is not called validated until it is seen failing", async () => {
   const { run, plan, put } = scene()
   put("src/inbox/count.sh", "echo 2\n")
   await plan()
   await run(["approve"])
   expect((await run(["run"])).out).toContain("1 passes, never seen failing")
   expect((await run(["gate"])).code).toBe(0)
-  expect((await run(["gate", "--proven"])).out).toContain("counts-unread passes but was never seen failing.")
+  expect((await run(["gate", "--validated"])).out).toContain("counts-unread passes but was never seen failing.")
 
   put("src/inbox/count.sh", "echo 3\n")
   await run(["run"])
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run"])).out).toContain("1 proven")
-  expect((await run(["gate", "--proven"])).code).toBe(0)
+  expect((await run(["run"])).out).toContain("1 validated")
+  expect((await run(["gate", "--validated"])).code).toBe(0)
 })
 
-test("a failure seen with an earlier command does not prove the command the claim has now", async () => {
+test("a failure seen with an earlier command does not validate the command the claim has now", async () => {
   const { run, plan, put, sheetPath } = scene()
   await plan()
   await run(["approve"])
   await run(["run"])
   put("src/inbox/count.sh", "echo 2\n")
-  expect((await run(["run"])).out).toContain("1 proven")
+  expect((await run(["run"])).out).toContain("1 validated")
 
   const weaker = { ...SHEET.units[0]?.claims[0], check: { how: "script", run: "true" } }
   writeFileSync(sheetPath(), JSON.stringify({ ...SHEET, units: [{ ...SHEET.units[0], claims: [weaker] }] }))
@@ -542,19 +542,19 @@ test("a refusal at the gate is logged once, however often the gate is asked", as
   expect(lines(readFileSync(log, "utf8")).map((line) => JSON.parse(line).rule)).toEqual(["no-effects"])
 })
 
-test("the gate refuses what is known wrong, and with --proven also what has not been shown yet", async () => {
+test("the gate refuses what is known wrong, and with --validated also what has not been shown yet", async () => {
   const { run, plan, put } = scene()
   await plan()
   expect((await run(["gate"])).out).toContain("The plan is not approved.")
   await run(["approve"])
   expect((await run(["gate"])).code).toBe(0)
-  expect((await run(["gate", "--proven"])).out).toContain("counts-unread is not run.")
+  expect((await run(["gate", "--validated"])).out).toContain("counts-unread is not run.")
 
   await run(["run"])
   expect((await run(["gate"])).out).toContain("counts-unread is failing.")
   put("src/inbox/count.sh", "echo 2\n")
   await run(["run"])
-  expect((await run(["gate", "--proven"])).code).toBe(0)
+  expect((await run(["gate", "--validated"])).code).toBe(0)
 })
 
 test("the hook refuses only the commands the person named, each at the bar they named", async () => {
@@ -562,7 +562,7 @@ test("the hook refuses only the commands the person named, each at the bar they 
   await plan()
   await run(["approve"])
   const asked = (command: string, ...flags: string[]) => hook(command, flags)
-  const wired = ["--before", "git commit", "--proven-before", "git push", "--proven-before", "gh pr create"]
+  const wired = ["--before", "git commit", "--validated-before", "git push", "--validated-before", "gh pr create"]
 
   expect((await asked("git commit -m wip", ...wired)).out).toBe("")
   expect((await asked("git push", ...wired)).out).toContain("counts-unread is not run.")
@@ -611,10 +611,10 @@ test("next names the one thing to do now, from an empty checkout to nothing left
 
   put("src/inbox/count.sh", "echo 2\n")
   put("src/other/unrelated.ts", "export const one = 2\n")
-  expect((await run(["run"])).out).toContain("Nothing is left: every claim with a check is proven and no rule is broken.")
+  expect((await run(["run"])).out).toContain("Nothing is left: every claim with a check is validated and no rule is broken.")
   const done = await next()
   expect(done.code).toBe(0)
-  expect(done.out).toContain("`grisha pr` prints the proof for the pull request.")
+  expect(done.out).toContain("`grisha pr` prints the record for the pull request.")
   expect(done.out).toContain("Left for the person to read: reads-well, the query is easy to follow.")
   expect(done.out).toContain("1 changed file is in no planned box: `grisha outside` lists it.")
 })
@@ -636,9 +636,9 @@ test("checks that can be run in one go are asked for in one step, and a failing 
 test("the command explains itself: every status, the sheet and the rules, with examples it accepts", async () => {
   const { run, home, start } = scene()
   const help = (await run(["help"])).out
-  for (const status of ["no check", "for you to read", "not run", "failing", "stale", "passes, never seen failing", "proven"]) expect(help).toContain(`\n  ${status}  `)
+  for (const status of ["no check", "for you to read", "not run", "failing", "stale", "passes, never seen failing", "validated"]) expect(help).toContain(`\n  ${status}  `)
   expect((await run([])).out).toBe(help)
-  expect((await run(["help", "hooks"])).out).toContain("grisha hook --before 'git commit' --proven-before 'git push'")
+  expect((await run(["help", "hooks"])).out).toContain("grisha hook --before 'git commit' --validated-before 'git push'")
   expect((await run(["help", "nonsense"])).out).toContain("Topics: sheet, rules, hooks.")
   const example = (text: string) => /^\{\n[\s\S]*?^\}$/m.exec(text)?.[0] ?? ""
 

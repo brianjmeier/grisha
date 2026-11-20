@@ -36,7 +36,7 @@ export function asMermaid(view: View): string {
 }
 
 export function asPullRequest(view: View, outside: string[]): string {
-  const rows = ["## How this was proven", ""]
+  const rows = ["## How this was validated", ""]
   view.units.forEach((unit, index) => {
     rows.push(`${index + 1}. **${unit.name}** (${unit.kind})`)
     for (const claim of unit.claims) rows.push(`   - ${claim.says}: **${claim.status}**, by ${checkLine(claim.check)}`)

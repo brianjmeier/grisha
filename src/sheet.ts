@@ -15,9 +15,9 @@ type Sheet = { task: string; boxes: Box[]; units: Unit[] }
 type Run = { claim: string; run: string; at: string; exit: number; fingerprint: string; evidence: string }
 type Runnable = { unit: Unit; claim: Claim; run: string }
 
-export type Status = "no check" | "for you to read" | "not run" | "failing" | "stale" | "passes, never seen failing" | "proven"
+export type Status = "no check" | "for you to read" | "not run" | "failing" | "stale" | "passes, never seen failing" | "validated"
 export type Approval = "not approved" | "changed since it was approved" | "approved"
-export type Bar = "nothing wrong" | "all proven"
+export type Bar = "nothing wrong" | "all validated"
 export type Place = { root: string; home: string; pointer: string }
 export type Task = { dir: string; sheet: Sheet; runs: Run[]; approval: Approval }
 export type Broken = { path: string; problems: string[] }
@@ -41,17 +41,17 @@ const FIXES_IN_ORDER: Record<Status, { at: Bar; fix: (claims: Seen[]) => string[
     fix: each(({ id, evidence }) => `${id} is failing. Its output is at ${evidence}. Make the code do what the claim says, then run \`grisha run ${id}\`.`),
   },
   stale: { at: "nothing wrong", fix: together("stale", "Code it covers changed after it last passed.") },
-  "not run": { at: "all proven", fix: together("not run", "A check for new behaviour has to fail before the change is made.") },
+  "not run": { at: "all validated", fix: together("not run", "A check for new behaviour has to fail before the change is made.") },
   "passes, never seen failing": {
-    at: "all proven",
+    at: "all validated",
     fix: each(({ id }) => `${id} passes but was never seen failing. Break the code it covers, run \`grisha run ${id}\`, restore the code and run it again.`),
   },
   "no check": {
-    at: "all proven",
+    at: "all validated",
     fix: each(({ id }) => `${id} has no check. In the sheet, set its "check" to { "how": "script", "run": "<command>" }, or to { "how": "person reads" } when no command can settle it.`),
   },
   "for you to read": null,
-  proven: null,
+  validated: null,
 }
 
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
@@ -117,7 +117,7 @@ function parseSheet(text: string): Sheet | string[] {
       if (claim.check === null) continue
       if (typeof claim.check !== "object" || !HOWS.includes(claim.check.how)) problems.push(`${where}: "check" must be null or have "how", one of ${oneOf(HOWS)}.`)
       else if (claim.check.how === "person reads" && claim.check.run !== undefined) problems.push(`${where}: a "person reads" check has no "run".`)
-      else if (claim.check.how !== "person reads" && !isText(claim.check.run)) problems.push(`${where}: a "${claim.check.how}" check needs "run", the command that proves it.`)
+      else if (claim.check.how !== "person reads" && !isText(claim.check.run)) problems.push(`${where}: a "${claim.check.how}" check needs "run", the command that checks it.`)
     }
   })
   return problems.length > 0 ? problems : { task: raw.task as string, boxes, units }
@@ -199,7 +199,7 @@ function statusOf(claim: Claim, runs: Run[], fingerprint: () => string): Status 
   if (!last) return "not run"
   if (last.exit !== 0) return "failing"
   if (last.fingerprint !== fingerprint()) return "stale"
-  return mine.some((run) => run.exit !== 0) ? "proven" : "passes, never seen failing"
+  return mine.some((run) => run.exit !== 0) ? "validated" : "passes, never seen failing"
 }
 
 export function view(world: World, here: Place, task: Task): View {
@@ -227,7 +227,7 @@ export function blocking(seen: View, bar: Bar): string[] {
     (Object.keys(FIXES_IN_ORDER) as Status[]).flatMap((status) => {
       const block = FIXES_IN_ORDER[status]
       const claims = unit.claims.filter((claim) => claim.status === status)
-      return block && claims.length > 0 && (block.at === "nothing wrong" || bar === "all proven") ? block.fix(claims) : []
+      return block && claims.length > 0 && (block.at === "nothing wrong" || bar === "all validated") ? block.fix(claims) : []
     }),
   )
 }

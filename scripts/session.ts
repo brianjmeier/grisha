@@ -115,8 +115,8 @@ export async function session(now: () => Date): Promise<string> {
   note("Now the commit goes through.")
   await grisha(["gate"])
 
-  note("The agent tries to push. Your push hook asks for everything to be proven.")
-  await grisha(["gate", "--proven"])
+  note("The agent tries to push. Your push hook asks for everything to be validated.")
+  await grisha(["gate", "--validated"])
 
   note("The agent also edits a file the plan never mentioned, and leaves a comment in it.")
   put("src/billing.ts", "// TODO: bill unread rows only\nexport const rate = 2\n")
@@ -146,7 +146,7 @@ export async function session(now: () => Date): Promise<string> {
   note("The agent asks one last time.")
   await grisha(["next"])
 
-  note("The proof, as a section for the pull request.")
+  note("The record, as a section for the pull request.")
   await grisha(["pr"])
 
   return `${shown.join("\n")}\n`

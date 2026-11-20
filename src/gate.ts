@@ -6,7 +6,7 @@ import type { World } from "./world"
 
 type Verdict = { pass: string | null } | { refuse: string } | { blocked: string[] } | { ask: { shown: string; mark: string } }
 
-type Asked = { command?: string | undefined; proven?: boolean | undefined; before?: string[] | undefined; provenBefore?: string[] | undefined; base?: string | undefined }
+type Asked = { command?: string | undefined; validated?: boolean | undefined; before?: string[] | undefined; validatedBefore?: string[] | undefined; base?: string | undefined }
 
 const APPROVE_HINT = "Run `grisha approve`: the person is shown the plan and asked."
 const PLAIN = "[\\p{L}\\p{N}_.\\/@%+=:,-]"
@@ -22,11 +22,11 @@ const first = (places: (number | undefined)[]) => places.filter((place) => place
 function askedOf(command: string, on: Asked): { what: "plan" | "rules" | Bar; before: string } | null {
   const rules = where(command, /\bgrisha(\.ts)?\s+rules\s.*--approve\b/)
   const plan = where(command, /\bgrisha(\.ts)?\s+approve\b/)
-  const proven = first((on.provenBefore ?? []).map((words) => whereWords(command, words)))
+  const validated = first((on.validatedBefore ?? []).map((words) => whereWords(command, words)))
   const wrong = first((on.before ?? []).map((words) => whereWords(command, words)))
-  const at = rules ?? plan ?? first([proven, wrong])
+  const at = rules ?? plan ?? first([validated, wrong])
   if (at === undefined) return null
-  return { what: rules !== undefined ? "rules" : plan !== undefined ? "plan" : proven !== undefined ? "all proven" : "nothing wrong", before: command.slice(0, at) }
+  return { what: rules !== undefined ? "rules" : plan !== undefined ? "plan" : validated !== undefined ? "all validated" : "nothing wrong", before: command.slice(0, at) }
 }
 
 function planBlockers(world: World, here: Place, task: Task | Broken | null, bar: Bar, seen?: View): string[] {
@@ -44,14 +44,14 @@ function ruleBlockers(world: World, here: Place, base: string): string[] {
 }
 
 export function nextStep(world: World, here: Place, task: Task | Broken | null, base: () => string, seen?: View): string | undefined {
-  return planBlockers(world, here, task, "all proven", seen)[0] ?? ruleBlockers(world, here, base())[0]
+  return planBlockers(world, here, task, "all validated", seen)[0] ?? ruleBlockers(world, here, base())[0]
 }
 
 export function judge(world: World, asked: Asked): Verdict {
   const { command } = asked
   const found = command === undefined ? null : askedOf(command, asked)
   if (command !== undefined && !found) return { pass: null }
-  const what = found ? found.what : asked.proven ? "all proven" : "nothing wrong"
+  const what = found ? found.what : asked.validated ? "all validated" : "nothing wrong"
   const folder = leadingFolder(found?.before ?? "")
   const moved = folder === undefined ? null : world.at(folder)
   const arrived = moved && place(moved)
@@ -67,5 +67,5 @@ export function judge(world: World, asked: Asked): Verdict {
   const todo = [...planBlockers(there, here, task, what), ...ruleBlockers(there, here, base())]
   if (todo.length > 0) return { blocked: todo }
   if (!task) return { pass: "No task is started in this checkout, so only the rules were checked. No rule is broken." }
-  return { pass: what === "all proven" ? "Every claim with a check is proven and no rule is broken." : "Nothing is known to be wrong." }
+  return { pass: what === "all validated" ? "Every claim with a check is validated and no rule is broken." : "Nothing is known to be wrong." }
 }

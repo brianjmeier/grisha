@@ -39,12 +39,12 @@
           <p class="plan"><span class="tags"><span class="tag" data-until="1">plan not approved</span><span class="tag" data-from="1" data-until="8">plan approved</span><span class="tag" data-from="8">plan approved</span></span><i>Task.</i> Count only unread rows.</p>
 
           <div class="claim">
-            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">failing</span><span class="tag" data-from="3">proven</span></span><b>Claim 1</b> (counts-unread)<b>.</b> <i>The badge shows the number of unread rows.</i></p>
+            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">failing</span><span class="tag" data-from="3">validated</span></span><b>Claim 1</b> (counts-unread)<b>.</b> <i>The badge shows the number of unread rows.</i></p>
             <p class="check"><i>Check.</i> By script: <code>sh test/unread.test.sh</code>. <span data-from="2">Run 1 failed.</span> <span data-from="3">Run 2 passed.</span></p>
           </div>
 
           <div class="claim">
-            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">passes, never seen failing</span><span class="tag" data-from="3" data-until="5" data-flag="4">stale</span><span class="tag" data-from="5" data-until="6">passes, never seen failing</span><span class="tag" data-from="6">proven</span></span><b>Claim 2</b> (still-a-number)<b>.</b> <i>The badge still shows a number.</i></p>
+            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">passes, never seen failing</span><span class="tag" data-from="3" data-until="5" data-flag="4">stale</span><span class="tag" data-from="5" data-until="6">passes, never seen failing</span><span class="tag" data-from="6">validated</span></span><b>Claim 2</b> (still-a-number)<b>.</b> <i>The badge still shows a number.</i></p>
             <p class="check"><i>Check.</i> By script: <code>sh test/number.test.sh</code>. <span data-from="2">Run 1 passed.</span> <span data-from="5">Run 2 passed.</span> <span data-from="6">Run 3 failed. Run 4 passed.</span></p>
           </div>
 
@@ -86,11 +86,11 @@
 </span></pre>
             </li>
             <li class="frame">
-              <p class="caption"><b>Listing 4 of 10.</b> The agent makes the change. That check failed once and passes now, so the claim is proven.</p>
+              <p class="caption"><b>Listing 4 of 10.</b> The agent makes the change. That check failed once and passes now, so the claim is validated.</p>
 <pre><span class="l"><b>$ grisha run counts-unread</b>
 </span><span class="l">counts-unread: passed
 </span><span class="l">…
-</span><span class="l">plan approved · 1 unit · 3 claims: 1 proven, 1 stale, 1 no check
+</span><span class="l">plan approved · 1 unit · 3 claims: 1 validated, 1 stale, 1 no check
 </span></pre>
             </li>
             <li class="frame">
@@ -117,7 +117,7 @@
 </span><span class="l"><b>$ grisha run still-a-number</b>
 </span><span class="l">still-a-number: passed
 </span><span class="l">…
-</span><span class="l">plan approved · 1 unit · 3 claims: 2 proven, 1 no check
+</span><span class="l">plan approved · 1 unit · 3 claims: 2 validated, 1 no check
 </span></pre>
             </li>
             <li class="frame">
@@ -134,21 +134,21 @@
               <p class="caption"><b>Listing 9 of 10.</b> The agent deletes the comment. No command can settle the last claim, so it is left for you to read, and you approve that change to the plan.</p>
 <pre><span class="l"><b>$ grisha next</b>
 </span><span class="l">Count only unread rows
-</span><span class="l">plan changed since it was approved · 1 unit · 3 claims: 2 proven, 1 for you to read
+</span><span class="l">plan changed since it was approved · 1 unit · 3 claims: 2 validated, 1 for you to read
 </span><span class="l">…
 </span><span class="l"><b>$ grisha approve</b>
 </span><span class="l">The person approved the plan.
-</span><span class="l">Nothing is left: every claim with a check is proven and no rule is broken. `grisha pr` prints the proof for the pull request.
+</span><span class="l">Nothing is left: every claim with a check is validated and no rule is broken. `grisha pr` prints the record for the pull request.
 </span></pre>
             </li>
             <li class="frame">
               <p class="caption"><b>Listing 10 of 10.</b> The record of every check goes into the pull request.</p>
 <pre><span class="l"><b>$ grisha pr</b>
-</span><span class="l">## How this was proven
+</span><span class="l">## How this was validated
 </span><span class="l">
 </span><span class="l">1. **count unread rows** (change)
-</span><span class="l">   - the badge shows the number of unread rows: **proven**, by script: sh test/unread.test.sh
-</span><span class="l">   - the badge still shows a number: **proven**, by script: sh test/number.test.sh
+</span><span class="l">   - the badge shows the number of unread rows: **validated**, by script: sh test/unread.test.sh
+</span><span class="l">   - the badge still shows a number: **validated**, by script: sh test/number.test.sh
 </span><span class="l">   - another tenant's rows never count: **for you to read**, by person reads
 </span><span class="l">…
 </span></pre>
@@ -160,7 +160,7 @@
       </div>
     </figure>
 
-    <p class="limits"><b>Limitations.</b> This is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. Grisha shows that each claim has a check, that the check failed before the change and passes after it, and that the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little.</p>
+    <p class="limits"><b>Limitations.</b> This is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. Grisha shows that each claim has a check, that the check failed before the change and passes after it, and that the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little. Support for Lean and TLA+, for the parts of a codebase you want formally proven, is coming soon.</p>
 
     <footer class="columns colophon">
       <dl class="where">

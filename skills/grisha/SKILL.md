@@ -11,7 +11,7 @@ Grisha keeps one sheet per task: the modules the task touches (boxes), the build
 
 1. `grisha start "<task>"` prints the sheet's path and the shape to write.
 2. `grisha next` names the one thing to do now. Do it, and run `grisha next` again.
-3. Stop when it exits 0. Then `grisha pr` prints the proof for the pull request body.
+3. Stop when it exits 0. Then `grisha pr` prints the record for the pull request body.
 
 Every refusal from `grisha` says what to do about it. Do that instead of working around it. Quote `grisha show` when you report progress; never describe it from memory.
 

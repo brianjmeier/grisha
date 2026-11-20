@@ -18,15 +18,15 @@ const OPTIONS = {
   for: { type: "string" },
   json: { type: "boolean" },
   mermaid: { type: "boolean" },
-  proven: { type: "boolean" },
+  validated: { type: "boolean" },
   before: { type: "string", multiple: true },
-  "proven-before": { type: "string", multiple: true },
+  "validated-before": { type: "string", multiple: true },
   init: { type: "boolean" },
   approve: { type: "boolean" },
   help: { type: "boolean" },
 } as const
 
-const DONE = "Nothing is left: every claim with a check is proven and no rule is broken. `grisha pr` prints the proof for the pull request."
+const DONE = "Nothing is left: every claim with a check is validated and no rule is broken. `grisha pr` prints the record for the pull request."
 const AGAIN = "Then run `grisha next` again."
 const OUTSIDE = "Say why each one changed in the pull request, or add a box that covers it to the sheet."
 
@@ -77,7 +77,7 @@ async function answer(argv: string[], world: World): Promise<number> {
   if (command === "hook" || command === "gate") {
     const call = command === "hook" ? bashCall(world.input()) : null
     if (command === "hook" && !call) return 0
-    const verdict = judge(world, { command: call ? call.command : flags.for, proven: flags.proven, before: flags.before, provenBefore: flags["proven-before"], base: flags.base })
+    const verdict = judge(world, { command: call ? call.command : flags.for, validated: flags.validated, before: flags.before, validatedBefore: flags["validated-before"], base: flags.base })
     if ("pass" in verdict) return call || verdict.pass === null ? 0 : say(verdict.pass)
     if ("ask" in verdict) {
       const { shown, mark } = verdict.ask

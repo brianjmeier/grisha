@@ -8,24 +8,24 @@ Grisha answers two questions and has no opinion on when you ask them.
 
 ```sh
 grisha gate            # exit 1 while something is known wrong
-grisha gate --proven   # exit 1 until every claim is proven
+grisha gate --validated   # exit 1 until every claim is validated
 ```
 
 | Asked | Exit 1 and a list when |
 |---|---|
 | `gate` | the plan is unapproved, a claim is failing or stale, a rule is broken, or the rules differ from the ones the person approved |
-| `gate --proven` | the same, and also when a claim was never run, was never seen failing or has no check |
+| `gate --validated` | the same, and also when a claim was never run, was never seen failing or has no check |
 
 A host that sees each command before it runs can pass the command and say which words mean which question:
 
 ```sh
-grisha gate --for "$command" --before "git commit" --proven-before "git push"
+grisha gate --for "$command" --before "git commit" --validated-before "git push"
 ```
 
 | The command | Answer |
 |---|---|
 | contains the words after a `--before` | what `gate` answers |
-| contains the words after a `--proven-before` | what `gate --proven` answers |
+| contains the words after a `--validated-before` | what `gate --validated` answers |
 | `grisha approve` or `grisha rules --approve` | exit 2, what the person must see, and a mark on the last line; exit 1 and the reason when there is nothing to approve |
 | anything else, or outside a git repository | exit 0, nothing printed |
 
@@ -73,7 +73,7 @@ Status is worked out on each call from the recorded runs and the files as they a
 exec grisha gate
 
 # pre-push
-exec grisha gate --proven
+exec grisha gate --validated
 ```
 
 An agent can skip git hooks with `--no-verify`, and a git hook never sees `grisha approve`, so with git hooks alone the person approves in a terminal. If the folder printed above is one the repository tracks (husky does this), a file added there would be shared with everyone, so use the app's own hook instead.
@@ -84,7 +84,7 @@ An agent can skip git hooks with `--no-verify`, and a git hook never sees `grish
 {
   "hooks": {
     "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command",
-      "command": "grisha hook --before 'git commit' --proven-before 'git push' --proven-before 'gh pr create' || exit 2" }] }]
+      "command": "grisha hook --before 'git commit' --validated-before 'git push' --validated-before 'gh pr create' || exit 2" }] }]
   }
 }
 ```

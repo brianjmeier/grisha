@@ -6,6 +6,6 @@ for (const button of document.querySelectorAll(".copy")) {
     } catch {
       return
     }
-    button.textContent = "Copied"
+    button.textContent = "copied"
   })
 }

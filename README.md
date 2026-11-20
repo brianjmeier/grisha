@@ -22,8 +22,8 @@ The agent types the commands. You approve the plan and read the result.
 Grisha runs on [Bun](https://bun.sh), so install that first.
 
 ```sh
-npm install -g grisha    # puts `grisha` on your PATH; the same line updates it later
-grisha rules --init      # writes the starter rules to ~/.grisha/rules.json
+npm install -g @brianmeier/grisha    # puts `grisha` on your PATH; the same line updates it later
+grisha rules --init                  # writes the starter rules to ~/.grisha/rules.json
 ```
 
 **1. Try the rules.** They need no agent and no task. In any git checkout:
@@ -35,7 +35,7 @@ grisha rules    # the lines your branch adds that a rule blocks, and a count of 
 **2. Give your agent a task.** Link the skills into the folder your agent reads skills from, then give it the task and say "use grisha":
 
 ```sh
-for skill in "$(npm root -g)"/grisha/skills/*/; do ln -s "$skill" ~/.claude/skills/; done
+for skill in "$(npm root -g)"/@brianmeier/grisha/skills/*/; do ln -s "$skill" ~/.claude/skills/; done
 ```
 
 The agent starts a plan, asks you to approve it, and repeats `grisha next` until nothing is left. [One task](#one-task) shows every step.

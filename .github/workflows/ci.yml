@@ -39,8 +39,8 @@ jobs:
         id: version
         run: |
           version=$(node -p "require('./package.json').version")
-          if npm view "grisha@$version" version > /dev/null 2>&1; then
-            echo "grisha $version is on npm already, so nothing is published."
+          if npm view "@brianmeier/grisha@$version" version > /dev/null 2>&1; then
+            echo "Version $version is on npm already, so nothing is published."
             echo "new=false" >> "$GITHUB_OUTPUT"
           else
             echo "new=true" >> "$GITHUB_OUTPUT"

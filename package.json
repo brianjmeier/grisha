@@ -1,5 +1,5 @@
 {
-  "name": "grisha",
+  "name": "@brianmeier/grisha",
   "version": "0.1.0",
   "description": "Makes a coding agent show its work is done: a check that was run for every claim about a task, and rules for the lines a branch adds.",
   "homepage": "https://grisha.brianmeier.dev",

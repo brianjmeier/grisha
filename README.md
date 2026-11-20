@@ -2,12 +2,14 @@
 
 Grisha makes a coding agent show that its work is done, instead of saying so. It is two things behind one command:
 
-- **Proof for each task.** The agent writes down what must be true when the work is finished, and the command that checks each claim. You approve that list. Grisha runs the checks itself, and a claim counts as proven only when its check has failed once and passes now.
+- **A check for every claim.** The agent writes down what must be true when the work is finished, and the command that checks each claim. You approve that list. Grisha runs the checks itself, and a claim counts as proven only when its check has failed once and passes now.
 - **A linter you can bring in gradually.** A rule is a pattern that lines of code may not match: a comment, a skipped test, a mock. A rule blocks the lines a branch adds and only counts the ones already in the code, so you can turn it on in an old codebase today.
 
 `grisha gate` exits 1 while a check is failing or out of date, or a rule is broken. Put it in a commit hook and unfinished work stops there.
 
 The agent types the commands. You approve the plan and read the result.
+
+Grisha is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. `proven` means only this: the check failed once, passes now, and the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little.
 
 ## What you gain
 

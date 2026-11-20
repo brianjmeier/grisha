@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Grisha: proof for work done by coding agents</title>
+  <title>Grisha: makes a coding agent show its work</title>
   <meta name="description" content="Grisha is a command-line tool that makes a coding agent show that its work is done: a check that was run for every claim about a task, and rules for the lines a branch adds.">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1d2027" media="(prefers-color-scheme: dark)">
@@ -22,7 +22,7 @@
 
   <main>
     <header class="titling">
-      <h1>Grisha <small>Proof for work done by coding agents</small></h1>
+      <h1>Grisha <small>Makes a coding agent show its work</small></h1>
       <ul class="people">
         <li><span>your coding agent</span> <i>writes the claims</i></li>
         <li><span>Grisha<a class="cite" href="#ref-1" aria-label="Reference 1">[1]</a></span> <i>runs the checks</i></li>
@@ -32,30 +32,30 @@
     </header>
 
     <figure class="task" data-task aria-label="One task, from draft to accepted">
-      <p class="abstract"><b>Abstract.</b> <span class="said">Done, tests pass.</span> <span class="note"><b>Grisha:</b> Show your work.</span><span class="qed" role="img" aria-label="Proven."></span></p>
+      <p class="abstract"><b>Abstract.</b> <span class="said">Done, tests pass.</span> <span class="note"><b>Grisha:</b> Show your work.</span></p>
 
       <div class="columns">
-        <div class="proofs">
+        <div class="claims">
           <p class="plan"><span class="tags"><span class="tag" data-until="1">plan not approved</span><span class="tag" data-from="1" data-until="8">plan approved</span><span class="tag" data-from="8">plan approved</span></span><i>Task.</i> Count only unread rows.</p>
 
           <div class="claim">
             <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">failing</span><span class="tag" data-from="3">proven</span></span><b>Claim 1</b> (counts-unread)<b>.</b> <i>The badge shows the number of unread rows.</i></p>
-            <p class="proof"><i>Proof.</i> By script: <code>sh test/unread.test.sh</code>. <span data-from="2">Run 1 failed.</span> <span data-from="3">Run 2 passed.</span> <span class="qed" data-from="3" role="img" aria-label="Proven."></span></p>
+            <p class="check"><i>Check.</i> By script: <code>sh test/unread.test.sh</code>. <span data-from="2">Run 1 failed.</span> <span data-from="3">Run 2 passed.</span></p>
           </div>
 
           <div class="claim">
             <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">passes, never seen failing</span><span class="tag" data-from="3" data-until="5" data-flag="4">stale</span><span class="tag" data-from="5" data-until="6">passes, never seen failing</span><span class="tag" data-from="6">proven</span></span><b>Claim 2</b> (still-a-number)<b>.</b> <i>The badge still shows a number.</i></p>
-            <p class="proof"><i>Proof.</i> By script: <code>sh test/number.test.sh</code>. <span data-from="2">Run 1 passed.</span> <span data-from="5">Run 2 passed.</span> <span data-from="6">Run 3 failed. Run 4 passed.</span> <span class="qed" data-from="6" role="img" aria-label="Proven."></span></p>
+            <p class="check"><i>Check.</i> By script: <code>sh test/number.test.sh</code>. <span data-from="2">Run 1 passed.</span> <span data-from="5">Run 2 passed.</span> <span data-from="6">Run 3 failed. Run 4 passed.</span></p>
           </div>
 
           <div class="claim">
             <p><span class="tags"><span class="tag" data-until="8">no check</span><span class="tag" data-from="8">for you to read</span></span><b>Claim 3</b> (other-tenants)<b>.</b> <i>Another tenant&rsquo;s rows never count.</i></p>
-            <p class="proof"><i>Proof.</i> <del data-until="8">By nothing yet.</del> <span data-from="8">Left for you to read.</span></p>
+            <p class="check"><i>Check.</i> <del data-until="8">By nothing yet.</del> <span data-from="8">Left for you to read.</span></p>
           </div>
 
           <div class="claim">
             <p><span class="tags"><span class="tag" data-until="7">none broken</span><span class="tag" data-from="7" data-until="8" data-flag="7">1 line blocked</span><span class="tag" data-from="8">none broken</span></span><b>Rules.</b> <i>No line the branch adds breaks a rule.</i></p>
-            <p class="proof"><del data-from="7" data-until="8"><i>Blocked.</i> <code>src/billing.ts:1</code> <code>// TODO: bill unread rows only</code></del></p>
+            <p class="check"><del data-from="7" data-until="8"><i>Blocked.</i> <code>src/billing.ts:1</code> <code>// TODO: bill unread rows only</code></del></p>
           </div>
         </div>
 
@@ -142,7 +142,7 @@
 </span></pre>
             </li>
             <li class="frame">
-              <p class="caption"><b>Listing 10 of 10.</b> The proof goes into the pull request.</p>
+              <p class="caption"><b>Listing 10 of 10.</b> The record of every check goes into the pull request.</p>
 <pre><span class="l"><b>$ grisha pr</b>
 </span><span class="l">## How this was proven
 </span><span class="l">
@@ -155,10 +155,12 @@
             </li>
           </ol>
           <p class="controls"><button type="button" data-go="back">back</button><button type="button" data-go="toggle">pause</button><button type="button" data-go="next">next</button></p>
-          <p class="closing">Done, tests pass. <span class="qed" role="img" aria-label="Proven."></span></p>
+          <p class="closing">Done, tests pass.</p>
         </div>
       </div>
     </figure>
+
+    <p class="limits"><b>Limitations.</b> This is not a formal proof, and no model grades the work. A check is a command, and its exit code decides. Grisha shows that each claim has a check, that the check failed before the change and passes after it, and that the code it covers has not changed since. The agent writes the checks and you approve them, so a weak check shows little.</p>
 
     <footer class="columns colophon">
       <dl class="where">

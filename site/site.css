@@ -184,7 +184,7 @@ h1 small {
 .display code { font-size: 1em; }
 .display button { font-size: 1.1em; }
 
-/* one task: what the agent said, the claims and their proofs, and what the tool printed */
+/* one task: what the agent said, the claims and their checks, and what the tool printed */
 
 .task { margin: 1.5rem 0 0; }
 .task .columns { font-size: 0.9em; }
@@ -211,28 +211,18 @@ h1 small {
   font-size: 0.92em;
   line-height: 1.25;
 }
-.abstract .qed { display: none; float: none; margin: 0 0 0 0.5em; }
 html[data-stage="accepted"] .said { color: var(--added); }
 html[data-stage="accepted"] .said::after, html[data-stage="accepted"] .note { display: none; }
-html[data-stage="accepted"] .abstract .qed { display: inline-block; color: var(--added); }
 
-.proofs { line-height: 1.4; }
+.claims { line-height: 1.4; }
 .plan { padding-bottom: 0.45em; border-bottom: 1px solid var(--ink); }
 .claim { margin-top: 0.55em; }
-.proof { display: flow-root; }
+.check { display: flow-root; }
 
 .tags { float: right; margin-left: 1.2em; }
 .tag { font-family: var(--mono); font-size: 0.82em; white-space: nowrap; }
 .tag::before { content: "["; }
 .tag::after { content: "]"; }
-
-.qed {
-  float: right;
-  width: 0.62em;
-  height: 0.62em;
-  margin: 0.42em 0.05em 0 0.8em;
-  background: currentColor;
-}
 
 del { text-decoration: none; }
 html:not(.js) [data-until] { display: none; }
@@ -240,7 +230,7 @@ html:not(.js) [data-until] { display: none; }
 [data-state="new"] { color: var(--added); }
 .tag[data-state="flagged"] { padding: 0.05em 0.35em; border: 1px solid var(--on-note); border-radius: 0.2em; background: var(--note); color: var(--on-note); }
 .tag[data-state="flagged"]::before, .tag[data-state="flagged"]::after { content: none; }
-span[data-state="new"]:not(.tag, .qed) { text-decoration: underline wavy; text-decoration-thickness: 0.05em; text-underline-offset: 0.2em; }
+span[data-state="new"]:not(.tag) { text-decoration: underline wavy; text-decoration-thickness: 0.05em; text-underline-offset: 0.2em; }
 del[data-state="struck"] { color: var(--struck); text-decoration: line-through; text-decoration-thickness: 0.07em; }
 
 .printed { min-width: 0; margin-top: 1.6rem; }
@@ -274,7 +264,8 @@ pre b { font-weight: 700; }
 
 /* where it lives, and where the name comes from */
 
-.colophon { margin-top: 3.2rem; padding-top: 1.2rem; border-top: 1px solid var(--ink); font-size: 0.92em; }
+.limits { max-width: 40em; margin: 2.6rem auto 0; }
+.colophon { margin-top: 2.2rem; padding-top: 1.2rem; border-top: 1px solid var(--ink); font-size: 0.92em; }
 .where { display: grid; grid-template-columns: auto 1fr; gap: 0.15em 1em; margin: 0; }
 .where dt { font-weight: 700; }
 .where dd { margin: 0; overflow-wrap: break-word; min-width: 0; }

@@ -9,7 +9,7 @@ const LONGEST_MS = 9000
 document.addEventListener("DOMContentLoaded", () => {
   const status = document.querySelector("[data-status]")
   const task = document.querySelector("[data-task]")
-  const proofs = task.querySelector(".proofs")
+  const claims = task.querySelector(".claims")
   const frames = [...task.querySelectorAll(".frame")]
   const parts = [...task.querySelectorAll("[data-from], [data-until]")]
   const controls = task.querySelector(".controls")
@@ -61,13 +61,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const measure = () => {
-    proofs.style.minHeight = ""
+    claims.style.minHeight = ""
     let tallest = 0
     for (let frame = 0; frame < frames.length; frame += 1) {
       mark(frame)
-      tallest = Math.max(tallest, proofs.offsetHeight)
+      tallest = Math.max(tallest, claims.offsetHeight)
     }
-    proofs.style.minHeight = `${tallest}px`
+    claims.style.minHeight = `${tallest}px`
     mark(at)
   }
 

@@ -1,19 +1,27 @@
-document.documentElement.classList.add("js")
+const root = document.documentElement
+root.classList.add("js")
 
 const STAGES = ["Draft", "Submitted", "Checked", "Rewritten", "Sent back", "Rechecked", "Rechecked", "Sent back", "Approved", "Accepted"]
+const MS_PER_LETTER = 26
+const SHORTEST_MS = 5000
+const LONGEST_MS = 9000
 
 document.addEventListener("DOMContentLoaded", () => {
-  const root = document.documentElement
   const status = document.querySelector("[data-status]")
-  const head = document.querySelector(".running")
   const task = document.querySelector("[data-task]")
-  const pin = task.querySelector(".pin")
   const proofs = task.querySelector(".proofs")
   const frames = [...task.querySelectorAll(".frame")]
   const parts = [...task.querySelectorAll("[data-from], [data-until]")]
-  let shown = -1
-  let width = 0
-  let settled = false
+  const controls = task.querySelector(".controls")
+  const toggle = controls.querySelector('[data-go="toggle"]')
+  const readingTime = frames.map((frame) => {
+    const letters = frame.textContent.replace(/\s+/g, " ").length
+    return Math.min(LONGEST_MS, Math.max(SHORTEST_MS, letters * MS_PER_LETTER))
+  })
+  let at = 0
+  let timer = 0
+  let seen = false
+  let wanted = !matchMedia("(prefers-reduced-motion: reduce)").matches
 
   for (const button of document.querySelectorAll(".copy")) {
     button.hidden = false
@@ -36,66 +44,68 @@ document.addEventListener("DOMContentLoaded", () => {
     return frame === from && from > 0 ? "new" : "on"
   }
 
-  const show = (frame) => {
-    if (frame === shown) return
-    shown = frame
+  const mark = (frame) => {
     for (const part of parts) part.dataset.state = stateAt(part, frame)
-    frames.forEach((element, index) => element.classList.toggle("on", index === frame))
   }
 
-  const place = () => {
-    const top = parseFloat(getComputedStyle(pin).top) || 0
-    const span = task.offsetHeight - pin.offsetHeight
-    const done = span > 0 ? Math.min(1, Math.max(0, (top - task.getBoundingClientRect().top) / span)) : 0
-    const frame = Math.min(frames.length - 1, Math.floor(done * frames.length))
-    show(frame)
-    root.style.setProperty("--draft", String(1 - frame / (frames.length - 1)))
-    const stage = STAGES[frame]
-    if (status.textContent === stage) return
-    status.textContent = stage
+  const show = (frame) => {
+    at = (frame + frames.length) % frames.length
+    mark(at)
+    frames.forEach((element, index) => element.classList.toggle("on", index === at))
+    root.dataset.stage = STAGES[at].toLowerCase()
+    root.style.setProperty("--draft", String(1 - at / (frames.length - 1)))
+    status.textContent = STAGES[at]
     status.classList.remove("changed")
-    if (!settled) return
     void status.offsetWidth
     status.classList.add("changed")
   }
 
   const measure = () => {
-    const now = shown
     proofs.style.minHeight = ""
     let tallest = 0
     for (let frame = 0; frame < frames.length; frame += 1) {
-      show(frame)
+      mark(frame)
       tallest = Math.max(tallest, proofs.offsetHeight)
     }
     proofs.style.minHeight = `${tallest}px`
-    show(Math.max(now, 0))
-    const room = window.innerHeight
-    const below = head.offsetHeight + 12
-    const spare = room - pin.offsetHeight
-    pin.style.top = `${Math.round(spare < below ? spare : Math.max(below, spare * 0.36))}px`
-    const step = Math.min(340, Math.max(220, room * 0.34))
-    task.style.height = `${Math.round(pin.offsetHeight + frames.length * step)}px`
-    place()
+    mark(at)
   }
 
-  let waiting = false
-  const later = () => {
-    if (waiting) return
-    waiting = true
-    requestAnimationFrame(() => {
-      waiting = false
-      place()
-    })
+  const run = () => {
+    clearTimeout(timer)
+    toggle.textContent = wanted ? "pause" : "play"
+    if (!wanted || !seen || document.hidden) return
+    timer = setTimeout(() => {
+      show(at + 1)
+      run()
+    }, readingTime[at])
   }
 
-  addEventListener("scroll", later, { passive: true })
+  controls.addEventListener("click", (event) => {
+    const go = event.target.closest("button")?.dataset.go
+    if (!go) return
+    if (go === "toggle") wanted = !wanted
+    else {
+      wanted = false
+      show(at + (go === "next" ? 1 : -1))
+    }
+    run()
+  })
+
+  new IntersectionObserver(([entry]) => {
+    seen = entry.isIntersecting
+    run()
+  }, { threshold: 0.6 }).observe(task)
+  document.addEventListener("visibilitychange", run)
+
+  let width = window.innerWidth
   addEventListener("resize", () => {
-    if (window.innerWidth === width) return later()
+    if (window.innerWidth === width) return
     width = window.innerWidth
     measure()
   })
-  width = window.innerWidth
+
+  show(0)
   measure()
-  settled = true
   document.fonts?.ready.then(measure)
 })

@@ -1,0 +1,23 @@
+The .woff2 files in this folder are cut-down copies of two font families,
+both released under the GUST Font License, which is in
+GUST-FONT-LICENSE.txt in this folder.
+
+New Computer Modern, version 8.1.1, by Antonis Tsolomitis
+  newcm10-book-latin        from NewCM10-Book.otf
+  newcm10-bookitalic-latin  from NewCM10-BookItalic.otf
+  newcm10-bold-latin        from NewCM10-Bold.otf
+  newcmmono10-book-latin    from NewCMMono10-Book.otf
+  newcmmono10-bold-latin    from NewCMMono10-Bold.otf
+  The unmodified fonts are at https://ctan.org/pkg/newcomputermodern
+
+Latin Modern, version 2.004, by B. Jackowski and J.M. Nowacki (on behalf
+of TeX Users Groups)
+  lmroman17-regular-latin   from lmroman17-regular.otf
+  The unmodified fonts are at https://ctan.org/pkg/lm
+
+Designer of the Computer Modern family: Donald E. Knuth.
+
+These files are modified: each keeps only the Latin letters, digits and
+punctuation this website uses, and is repacked as WOFF2. Nothing else was
+changed. They are not supported by the original authors, and they are not
+a replacement for the original fonts.

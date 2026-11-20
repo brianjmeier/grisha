@@ -7,14 +7,15 @@
   <meta name="description" content="Grisha is a command-line tool that makes a coding agent show that its work is done: a check that was run for every claim about a task, and rules for the lines a branch adds.">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1d2027" media="(prefers-color-scheme: dark)">
-  <link rel="preload" href="./fonts/lmroman10-regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="./fonts/lmroman17-regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/newcm10-book-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/lmroman17-regular-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./site.css">
   <script src="./site.js"></script>
 </head>
 <body id="top">
 <div class="sheet">
   <p class="watermark" aria-hidden="true"><span>Draft</span></p>
+
   <header class="running">
     <p><a href="#top">Grisha</a><span data-status>Draft</span></p>
   </header>
@@ -30,131 +31,52 @@
       <p class="get"><span class="display"><code>npm install -g @brianmeier/grisha</code><button type="button" class="copy" hidden>copy</button></span></p>
     </header>
 
-    <section class="abstract" aria-labelledby="abstract">
-      <h2 id="abstract">Abstract</h2>
-      <p class="draft"><del class="said">Done, tests pass.</del><span class="leader" aria-hidden="true"></span> <span class="note"><b>Grisha:</b> Show your work.</span></p>
-      <p>Grisha is a command-line tool that makes a coding agent show that its work is done, instead of saying so. The agent writes down what must be true and the command that checks each claim, you approve that list, and Grisha runs the checks. A claim is proven only when its check has failed once and passes now. Rules keep unwanted lines out of the code a branch adds.</p>
-    </section>
+    <figure class="task" data-task aria-label="One task, from draft to accepted">
+      <p class="abstract"><b>Abstract.</b> <span class="said">Done, tests pass.</span> <span class="note"><b>Grisha:</b> Show your work.</span><span class="qed" role="img" aria-label="Proven."></span></p>
 
-    <section aria-labelledby="setup">
-      <h2 id="setup"><span class="no">1</span>Setup</h2>
-      <ol class="steps">
-        <li>Install it. Grisha runs on <a href="https://bun.sh">Bun</a>, so install that first.
-          <span class="display"><code>npm install -g @brianmeier/grisha</code><button type="button" class="copy" hidden>copy</button></span></li>
-        <li>Write the starter rules.
-          <span class="display"><code>grisha rules --init</code></span></li>
-        <li>Try the rules in any git checkout. They need no agent and no task.
-          <span class="display"><code>grisha rules</code></span></li>
-        <li>Link the skills into the folder your agent reads skills from.
-          <span class="display"><code>for skill in "$(npm root -g)"/@brianmeier/grisha/skills/*/; do ln -s "$skill" ~/.claude/skills/; done</code></span></li>
-        <li>Give your agent a task and tell it to &ldquo;use grisha&rdquo;.</li>
-        <li>Put the gate in a commit hook, and unfinished work stops there.
-          <span class="display"><code>grisha gate</code></span></li>
-      </ol>
-      <p>Plans, rules and results live in <code>~/.grisha/</code>, outside your checkouts, so nothing is added to the codebase.</p>
-    </section>
+      <div class="columns">
+        <div class="proofs">
+          <p class="plan"><span class="tags"><span class="tag" data-until="1">plan not approved</span><span class="tag" data-from="1" data-until="8">plan approved</span><span class="tag" data-from="8">plan approved</span></span><i>Task.</i> Count only unread rows.</p>
 
-    <section aria-labelledby="rules">
-      <h2 id="rules"><span class="no">2</span>Rules</h2>
-      <p>A rule is a pattern that lines of code may not match: a comment, a skipped test, a mock. It blocks the lines a branch adds and only counts the lines already there, so you can turn it on in an old codebase today.</p>
-<pre><span class="l"><b>$ grisha rules --init</b>
-</span><span class="l">Starter rules written to ~/.grisha/rules.json. They apply in every repository.
-</span></pre>
-      <p class="flush">There are fifteen starter rules. Here a branch adds a comment to <code>src/billing.ts</code>. An older file already has one, which is counted and not blocked.</p>
-<pre><span class="l"><b>$ grisha rules</b>
-</span><span class="l">src/billing.ts:1  no-comments
-</span><span class="l">  + // TODO: bill unread rows only
-</span><span class="l">  Delete the comment. If it explains a workaround, fix what it works around; if it states a constraint, turn the constraint into a type, a test or a check.
-</span><span class="l">
-</span><span class="l">Each rule, the lines it blocks, and the lines already in the code that match it:
-</span><span class="l">  no-comments             added lines  1 line in 1 file
-</span><span class="l">  no-effects              added lines  none
-</span><span class="l">  no-timers               added lines  none
-</span><span class="l">…
-</span><span class="l">Rules are read from these files. A later file adds rules, replaces one by name, or turns one off:
-</span><span class="l">  every repository            ~/.grisha/rules.json
-</span><span class="l">  this repository, committed  ~/code/shop/.grisha/rules.json  (no file)
-</span><span class="l">  this repository, only you   ~/.grisha/repos/shop/rules.json  (no file)
-</span><span class="l">…
-</span><span class="l">(exit 1)
-</span></pre>
-      <p class="flush">A rule&rsquo;s <code>blocks</code> says which matching lines are refused. Left out, it is <code>"added lines"</code>, and the count of older lines is what is left to clean up. When the count reaches none, move the rule to <code>"every line"</code>.</p>
-      <table>
-        <caption>Table 1: What <code>blocks</code> does to a matching line.</caption>
-        <thead>
-          <tr><th scope="col"><code>blocks</code></th><th scope="col">A line the branch adds</th><th scope="col">A line already there</th></tr>
-        </thead>
-        <tbody>
-          <tr><th scope="row"><code>"added lines"</code></th><td>blocked</td><td>counted</td></tr>
-          <tr><th scope="row"><code>"every line"</code></th><td>blocked</td><td>blocked</td></tr>
-          <tr><th scope="row"><code>"nothing"</code></th><td>listed</td><td>counted</td></tr>
-        </tbody>
-      </table>
-      <p class="flush">A rule is a name, a pattern tried on one line at a time, the files it applies to and the fix to name. This file adds a rule for a repository&rsquo;s tests and turns a starter rule off.</p>
-      <code class="listing">{
-  "files": { "tests": ["**/*.test.ts", "e2e/**"] },
-  "rules": [
-    { "name": "no-act",
-      "pattern": "\\bact\\(",
-      "files": "tests",
-      "blocks": "every line",
-      "fix": "Wait for what the user sees." },
-    { "name": "no-casts-in-tests", "off": true }
-  ]
-}</code>
-      <p class="flush">The rules cannot change quietly. Here the agent turned a rule off for itself, and the gate refuses until you have seen the change and said yes.</p>
-<pre><span class="l"><b>$ grisha gate</b>
-</span><span class="l">Before this goes further:
-</span><span class="l">- The rules here are not the ones the person approved:
-</span><span class="l">  no longer in force: no-comments
-</span><span class="l">  Run `grisha rules --approve`: the person is shown what changed and asked.
-</span><span class="l">(exit 1)
-</span></pre>
-    </section>
+          <div class="claim">
+            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">failing</span><span class="tag" data-from="3">proven</span></span><b>Claim 1</b> (counts-unread)<b>.</b> <i>The badge shows the number of unread rows.</i></p>
+            <p class="proof"><i>Proof.</i> By script: <code>sh test/unread.test.sh</code>. <span data-from="2">Run 1 failed.</span> <span data-from="3">Run 2 passed.</span> <span class="qed" data-from="3" role="img" aria-label="Proven."></span></p>
+          </div>
 
-    <section aria-labelledby="task">
-      <h2 id="task"><span class="no">3</span>One task</h2>
-      <p>A badge counts every row and should count only unread ones. You give your agent the task and tell it to use grisha.</p>
+          <div class="claim">
+            <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">passes, never seen failing</span><span class="tag" data-from="3" data-until="5" data-flag="4">stale</span><span class="tag" data-from="5" data-until="6">passes, never seen failing</span><span class="tag" data-from="6">proven</span></span><b>Claim 2</b> (still-a-number)<b>.</b> <i>The badge still shows a number.</i></p>
+            <p class="proof"><i>Proof.</i> By script: <code>sh test/number.test.sh</code>. <span data-from="2">Run 1 passed.</span> <span data-from="5">Run 2 passed.</span> <span data-from="6">Run 3 failed. Run 4 passed.</span> <span class="qed" data-from="6" role="img" aria-label="Proven."></span></p>
+          </div>
 
-      <div class="task" data-task>
-        <div class="pin">
-          <figure>
-            <div class="proofs">
-              <p class="plan"><span class="tags"><span class="tag" data-until="1">plan not approved</span><span class="tag" data-from="1" data-until="8">plan approved</span><span class="tag" data-from="8">plan approved</span></span><i>Task.</i> Count only unread rows.</p>
+          <div class="claim">
+            <p><span class="tags"><span class="tag" data-until="8">no check</span><span class="tag" data-from="8">for you to read</span></span><b>Claim 3</b> (other-tenants)<b>.</b> <i>Another tenant&rsquo;s rows never count.</i></p>
+            <p class="proof"><i>Proof.</i> <del data-until="8">By nothing yet.</del> <span data-from="8">Left for you to read.</span></p>
+          </div>
 
-              <div class="claim">
-                <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">failing</span><span class="tag" data-from="3">proven</span></span><b>Claim 1</b> (counts-unread)<b>.</b> <i>The badge shows the number of unread rows.</i></p>
-                <p class="proof"><i>Proof.</i> By script: <code>sh test/unread.test.sh</code>. <span data-from="2">Run 1 failed.</span> <span data-from="3">Run 2 passed.</span> <span class="qed" data-from="3" role="img" aria-label="Proven."></span></p>
-              </div>
+          <div class="claim">
+            <p><span class="tags"><span class="tag" data-until="7">none broken</span><span class="tag" data-from="7" data-until="8" data-flag="7">1 line blocked</span><span class="tag" data-from="8">none broken</span></span><b>Rules.</b> <i>No line the branch adds breaks a rule.</i></p>
+            <p class="proof"><del data-from="7" data-until="8"><i>Blocked.</i> <code>src/billing.ts:1</code> <code>// TODO: bill unread rows only</code></del></p>
+          </div>
+        </div>
 
-              <div class="claim">
-                <p><span class="tags"><span class="tag" data-until="2">not run</span><span class="tag" data-from="2" data-until="3">passes, never seen failing</span><span class="tag" data-from="3" data-until="5" data-flag="4">stale</span><span class="tag" data-from="5" data-until="6">passes, never seen failing</span><span class="tag" data-from="6">proven</span></span><b>Claim 2</b> (still-a-number)<b>.</b> <i>The badge still shows a number.</i></p>
-                <p class="proof"><i>Proof.</i> By script: <code>sh test/number.test.sh</code>. <span data-from="2">Run 1 passed.</span> <span data-from="5">Run 2 passed.</span> <span data-from="6">Run 3 failed. Run 4 passed.</span> <span class="qed" data-from="6" role="img" aria-label="Proven."></span></p>
-              </div>
-
-              <div class="claim">
-                <p><span class="tags"><span class="tag" data-until="8" data-flag="7">no check</span><span class="tag" data-from="8">for you to read</span></span><b>Claim 3</b> (other-tenants)<b>.</b> <i>Another tenant&rsquo;s rows never count.</i></p>
-                <p class="proof"><i>Proof.</i> <del data-until="8">By nothing yet.</del> <span data-from="8">Left for you to read.</span></p>
-              </div>
-            </div>
-
-            <ol class="frames">
-              <li class="frame">
-                <p class="caption"><b>Listing 1.</b> The agent starts a sheet: what must be true when the work is done, and the command that checks each claim.</p>
+        <div class="printed">
+          <ol class="frames">
+            <li class="frame">
+              <p class="caption"><b>Listing 1 of 10.</b> The agent writes down what must be true when the work is done, and the command that checks each claim.</p>
 <pre><span class="l"><b>$ grisha start "Count only unread rows"</b>
 </span><span class="l">New sheet: ~/.grisha/repos/shop/tasks/count-only-unread-rows/sheet.json
 </span><span class="l">Write the plan into it, then run `grisha next`.
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 2.</b> Your agent app stops and shows you the plan. You say yes.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 2 of 10.</b> You are shown the plan, and you say yes.</p>
 <pre><span class="l"><b>$ grisha approve</b>
 </span><span class="l">The person approved the plan.
 </span><span class="l">Next: counts-unread, still-a-number are not run. Run `grisha run counts-unread still-a-number`. A check for new behaviour has to fail before the change is made.
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 3.</b> Before any change, Grisha runs the checks. The check for new behaviour has to fail first.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 3 of 10.</b> Before any change, Grisha runs the checks. The one for new behaviour has to fail first.</p>
 <pre><span class="l"><b>$ grisha run counts-unread still-a-number</b>
 </span><span class="l">counts-unread: failed (exit 1)
 </span><span class="l">…
@@ -162,33 +84,33 @@
 </span><span class="l">…
 </span><span class="l">plan approved · 1 unit · 3 claims: 1 failing, 1 passes, never seen failing, 1 no check
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 4.</b> The agent makes the change and runs that check again. It failed once and passes now, so the claim is proven.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 4 of 10.</b> The agent makes the change. That check failed once and passes now, so the claim is proven.</p>
 <pre><span class="l"><b>$ grisha run counts-unread</b>
 </span><span class="l">counts-unread: passed
 </span><span class="l">…
 </span><span class="l">plan approved · 1 unit · 3 claims: 1 proven, 1 stale, 1 no check
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 5.</b> The agent tries to commit. The commit hook asks the gate, and one check is out of date.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 5 of 10.</b> The agent tries to commit. The gate refuses, because the change left another check out of date.</p>
 <pre><span class="l"><b>$ grisha gate</b>
 </span><span class="l">Before this goes further:
 </span><span class="l">- still-a-number is stale. Run `grisha run still-a-number`. Code it covers changed after it last passed.
 </span><span class="l">(exit 1)
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 6.</b> Run again, it passes. It passed before the change too, so it has not shown it can fail.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 6 of 10.</b> Run again, it passes. It passed before the change too, so it has not shown it can fail.</p>
 <pre><span class="l"><b>$ grisha run still-a-number</b>
 </span><span class="l">still-a-number: passed
 </span><span class="l">…
 </span><span class="l">Next: still-a-number passes but was never seen failing. Break the code it covers, run `grisha run still-a-number`, restore the code and run it again.
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 7.</b> The agent breaks the code on purpose and sees the check fail. It restores the code and runs the check once more.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 7 of 10.</b> The agent breaks the code on purpose and sees the check fail. It restores the code, and the check passes.</p>
 <pre><span class="l"><b>$ grisha run still-a-number</b>
 </span><span class="l">still-a-number: failed (exit 1)
 </span><span class="l">…
@@ -197,17 +119,19 @@
 </span><span class="l">…
 </span><span class="l">plan approved · 1 unit · 3 claims: 2 proven, 1 no check
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 8.</b> The agent tries to push. The push hook wants every claim settled, and one has no check.</p>
-<pre><span class="l"><b>$ grisha gate --proven</b>
-</span><span class="l">Before this goes further:
-</span><span class="l">- other-tenants has no check. In the sheet, set its "check" to { "how": "script", "run": "&lt;command&gt;" }, or to { "how": "person reads" } when no command can settle it.
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 8 of 10.</b> The agent left a comment in the code. A rule blocks lines like that one in what a branch adds.</p>
+<pre><span class="l"><b>$ grisha rules</b>
+</span><span class="l">src/billing.ts:1  no-comments
+</span><span class="l">  + // TODO: bill unread rows only
+</span><span class="l">  Delete the comment. If it explains a workaround, fix what it works around; if it states a constraint, turn the constraint into a type, a test or a check.
+</span><span class="l">…
 </span><span class="l">(exit 1)
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 9.</b> No command can settle that claim, so the agent leaves it for you to read. The plan changed, so you are asked again.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 9 of 10.</b> The agent deletes the comment. No command can settle the last claim, so it is left for you to read, and you approve that change to the plan.</p>
 <pre><span class="l"><b>$ grisha next</b>
 </span><span class="l">Count only unread rows
 </span><span class="l">plan changed since it was approved · 1 unit · 3 claims: 2 proven, 1 for you to read
@@ -216,9 +140,9 @@
 </span><span class="l">The person approved the plan.
 </span><span class="l">Nothing is left: every claim with a check is proven and no rule is broken. `grisha pr` prints the proof for the pull request.
 </span></pre>
-              </li>
-              <li class="frame">
-                <p class="caption"><b>Listing 10.</b> The proof, as a section for the pull request.</p>
+            </li>
+            <li class="frame">
+              <p class="caption"><b>Listing 10 of 10.</b> The proof goes into the pull request.</p>
 <pre><span class="l"><b>$ grisha pr</b>
 </span><span class="l">## How this was proven
 </span><span class="l">
@@ -228,34 +152,28 @@
 </span><span class="l">   - another tenant's rows never count: **for you to read**, by person reads
 </span><span class="l">…
 </span></pre>
-              </li>
-            </ol>
-          </figure>
+            </li>
+          </ol>
+          <p class="controls"><button type="button" data-go="back">back</button><button type="button" data-go="toggle">pause</button><button type="button" data-go="next">next</button></p>
+          <p class="closing">Done, tests pass. <span class="qed" role="img" aria-label="Proven."></span></p>
         </div>
       </div>
-    </section>
+    </figure>
 
-    <section aria-labelledby="conclusion">
-      <h2 id="conclusion"><span class="no">4</span>Conclusion</h2>
-      <p class="closing">Done, tests pass. <span class="qed" role="img" aria-label="Proven."></span></p>
-    </section>
-
-    <section aria-labelledby="install">
-      <h2 id="install">Install</h2>
-      <p class="flush"><span class="display"><code>npm install -g @brianmeier/grisha</code><button type="button" class="copy" hidden>copy</button></span></p>
+    <footer class="columns colophon">
       <dl class="where">
+        <dt>Setup</dt><dd><a href="https://github.com/brianjmeier/grisha#get-started">github.com/<wbr>brianjmeier/<wbr>grisha#get-started</a></dd>
         <dt>Source</dt><dd><a href="https://github.com/brianjmeier/grisha">github.com/<wbr>brianjmeier/<wbr>grisha</a></dd>
         <dt>Package</dt><dd><a href="https://www.npmjs.com/package/@brianmeier/grisha">npmjs.com/<wbr>package/<wbr>@brianmeier/<wbr>grisha</a></dd>
         <dt>Licence</dt><dd>MIT</dd>
       </dl>
-    </section>
-
-    <section aria-labelledby="references">
-      <h2 id="references">References</h2>
-      <ol class="refs">
-        <li id="ref-1">G. Perelman. <i>The entropy formula for the Ricci flow and its geometric applications.</i> Preprint, 2002.</li>
-      </ol>
-    </section>
+      <section aria-labelledby="references">
+        <h2 id="references">References</h2>
+        <ol class="refs">
+          <li id="ref-1">G. Perelman. <i>The entropy formula for the Ricci flow and its geometric applications.</i> Preprint, 2002.</li>
+        </ol>
+      </section>
+    </footer>
   </main>
 </div>
 </body>

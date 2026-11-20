@@ -1,140 +1,342 @@
-@font-face { font-family: "Courier Prime"; src: url("./fonts/courier-prime-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Courier Prime"; src: url("./fonts/courier-prime-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
-@font-face { font-family: "Nothing You Could Do"; src: url("./fonts/nothing-you-could-do-400.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "LM Roman"; src: url("./fonts/lmroman10-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "LM Roman"; src: url("./fonts/lmroman10-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "LM Roman"; src: url("./fonts/lmroman10-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "LM Roman Display"; src: url("./fonts/lmroman17-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "LM Mono"; src: url("./fonts/lmmono10-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "LM Mono"; src: url("./fonts/lmmonolt10-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 
-/* A typed sheet, marked by hand. The agent types, Grisha marks in red pen, and what is
-   yours (your approval, a link, a button) is in blue pen. */
 :root {
-  --desk: #f5f7f8;
-  --paper: #ffffff;
-  --typed: #20242b;
-  --faded: #5a6370;
-  --rule: #d3dce4;
-  --pen: #d3222a;
-  --yours: #2148b8;
-  --font-typed: "Courier Prime", "Courier New", Courier, monospace;
-  --font-pen: "Nothing You Could Do", "Bradley Hand", cursive;
-  --side: clamp(16px, 4vw, 48px);
-  color-scheme: light;
+  color-scheme: light dark;
+  --page: #ffffff;
+  --ink: #000000;
+  --desk: #dfe1e6;
+  --struck: #c40000;
+  --added: #1226c9;
+  --note: #ffa63f;
+  --on-note: #000000;
+  --listing: #f0f0f3;
+  --mark: #ececef;
+  --shadow: 0 0 0 1px rgb(0 0 0 / 0.07), 0 24px 60px -30px rgb(0 0 0 / 0.45);
+  --roman: "LM Roman", "Latin Modern Roman", "CMU Serif", "Times New Roman", serif;
+  --display: "LM Roman Display", "LM Roman", "Latin Modern Roman", "Times New Roman", serif;
+  --mono: "LM Mono", "Latin Modern Mono", "Courier New", monospace;
+  --measure: 34em;
+  --gutter: 1rem;
+  --head: 3rem;
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --desk: #14181d; --paper: #1b2027; --typed: #e4e8ec; --faded: #98a2ae; --rule: #2d3640;
-    --pen: #ff6a66; --yours: #8eadff;
-    color-scheme: dark;
+    --page: #1d2027;
+    --ink: #f1f2f4;
+    --desk: #101216;
+    --struck: #ff8073;
+    --added: #9db8ff;
+    --note: #f29f3d;
+    --listing: #292d36;
+    --mark: #2a2e38;
+    --shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 60px -30px rgb(0 0 0 / 0.9);
   }
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; }
-body { background: var(--desk); color: var(--typed); font: 17px/1.6 var(--font-typed); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-p, h1, h2, h3, ol, ul, pre { margin: 0; }
-ol, ul { padding: 0; list-style: none; }
-a { color: var(--yours); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-a:hover { text-decoration-thickness: 2px; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--yours); outline-offset: 3px; }
-code { font: inherit; }
-button { all: unset; cursor: pointer; color: var(--yours); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-button:hover { text-decoration-thickness: 2px; }
+*, *::before, *::after { box-sizing: border-box; }
 
-.pen { font-family: var(--font-pen); font-weight: 400; color: var(--pen); }
-.pen svg { flex: none; overflow: visible; }
-.pen path { fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
-.page { max-width: 1160px; margin: 0 auto; padding: 0 var(--side); }
-
-/* ---------- the name, and how to get it ---------- */
-.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 28px; padding: 22px 0 14px; }
-.name { font-size: 42px; line-height: 1; transform: rotate(-4deg); }
-.get { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
-
-/* ---------- the first step: what the agent said, and what Grisha wrote on it ---------- */
-.opening { padding: clamp(28px, 7vh, 80px) 0 clamp(24px, 4vh, 48px); }
-.circled { position: relative; display: inline-block; font: 700 clamp(30px, 6.4vw, 84px)/1.1 var(--font-typed); letter-spacing: -0.02em; white-space: nowrap; }
-.circled svg { position: absolute; left: -9%; top: -40%; width: 118%; height: 180%; overflow: visible; pointer-events: none; }
-.circled path { fill: none; stroke: var(--pen); stroke-width: 3.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.who { display: block; margin-top: clamp(22px, 3.6vw, 44px); color: var(--faded); }
-.note { margin: clamp(10px, 2.2vw, 30px) 0 0 clamp(0px, 5vw, 72px); font-size: clamp(46px, 8.6vw, 118px); line-height: 1.05; transform: rotate(-4deg); transform-origin: left center; }
-.signed { width: fit-content; margin: clamp(2px, 0.6vw, 8px) 0 0 clamp(120px, 46vw, 600px); font-size: clamp(34px, 5vw, 66px); line-height: 1.1; transform: rotate(-4deg); }
-.opening.go .circled path { stroke-dasharray: 1; animation: draw 620ms ease-out 500ms both; }
-.opening.go .note { animation: write 700ms ease-out 1150ms both; }
-.opening.go .signed { animation: write 420ms ease-out 1900ms both; }
-@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes write { from { clip-path: inset(-40% 100% -40% -5%); } to { clip-path: inset(-40% -5% -40% -5%); } }
-.lede { margin-top: clamp(36px, 6vh, 64px); font-size: clamp(17px, 1.5vw, 20px); max-width: 60ch; text-wrap: pretty; }
-
-.install { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; max-width: 100%; padding: 9px 14px; border: 1.5px solid var(--typed); }
-.install code { font-weight: 700; min-width: 0; overflow-wrap: anywhere; user-select: all; }
-.install .prompt { font-weight: 400; color: var(--faded); user-select: none; }
-
-/* ---------- one task: the sheet on the left is marked as the steps on the right go by ---------- */
-.demo { padding: 0 0 clamp(40px, 8vh, 88px); }
-.try h2 { font: 700 clamp(23px, 2.4vw, 31px)/1.25 var(--font-typed); text-wrap: balance; }
-.task-scene { display: grid; gap: clamp(28px, 4vw, 56px); padding-top: clamp(20px, 3vh, 32px); align-items: start; }
-
-.paper { position: relative; display: grid; gap: 18px; padding: clamp(20px, 2.6vw, 32px); background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 1px 1px rgba(20, 24, 30, 0.05), 0 22px 44px -26px rgba(20, 24, 30, 0.35); font-size: 15.5px; line-height: 1.5; }
-.paper .task { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 16px; font-weight: 700; font-size: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
-.claims { display: grid; gap: 10px; }
-.claims .role, .claims .how { color: var(--faded); }
-.mark { display: flex; align-items: flex-end; gap: 10px; min-height: 46px; padding: 4px 0 0 18px; font-size: 25px; line-height: 1.15; transform: rotate(-2.5deg); transform-origin: left center; }
-.mark svg { width: 40px; height: 34px; }
-/* The last slot holds either the line a rule blocked or Grisha's verdict, stacked in one cell. */
-.last { display: grid; padding-top: 12px; border-top: 1px solid var(--rule); }
-.last > * { grid-area: 1 / 1; align-self: start; }
-.added { display: grid; gap: 2px; justify-items: start; }
-.added.off { visibility: hidden; }
-.added .file { color: var(--faded); }
-.added .line { position: relative; }
-.added .line::after { content: ""; position: absolute; left: -6px; right: -10px; top: 52%; height: 3px; border-radius: 3px; background: var(--pen); transform: rotate(-1.2deg); transform-origin: left center; }
-.added .pen { font-size: 25px; line-height: 1.2; padding-left: 18px; transform: rotate(-2.5deg); transform-origin: left center; }
-.approved { color: var(--yours); font-size: 25px; line-height: 1; transform: rotate(-3deg); }
-.verdict { font-size: clamp(27px, 2.7vw, 35px); line-height: 1.15; min-height: 1.3em; transform: rotate(-3deg); transform-origin: left center; }
-
-.flow { display: grid; gap: clamp(32px, 5vh, 48px); min-width: 0; }
-.flow li { display: grid; gap: 12px; align-content: start; min-width: 0; }
-.flow h2 { font: 700 clamp(20px, 1.9vw, 25px)/1.3 var(--font-typed); }
-.flow p { max-width: 62ch; text-wrap: pretty; }
-.flow pre { margin-top: 6px; padding: 4px 0 4px 20px; border-left: 2px solid var(--rule); font: 14.5px/1.7 var(--font-typed); color: var(--faded); white-space: pre-wrap; overflow-wrap: anywhere; }
-.flow pre b { color: var(--typed); }
-
-/* Once the page's script runs, one step shows at a time. The opening, the task and every
-   step of it are stacked in one cell, so the stage is as tall as its tallest and never jumps. */
-.demo.plays .stage { display: grid; }
-.demo.plays .stage > * { grid-area: 1 / 1; }
-.demo.plays .stage > .away { visibility: hidden; }
-.demo.plays .stage > .away * { visibility: hidden !important; animation: none; }
-.demo.plays .flow { gap: 0; }
-.demo.plays .flow li { grid-area: 1 / 1; visibility: hidden; }
-.demo.plays .flow li.now { visibility: visible; }
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-.numbers { display: flex; flex-wrap: wrap; gap: 2px; }
-.numbers button { display: grid; place-items: center; width: 34px; height: 34px; color: var(--faded); text-decoration: none; border: 2px solid transparent; }
-.numbers button:hover { color: var(--typed); }
-.numbers button[aria-current] { color: var(--typed); font-weight: 700; border-color: var(--pen); border-radius: 50% 44% 52% 46% / 46% 54% 44% 52%; transform: rotate(-6deg); }
-.fresh { animation: write 420ms ease-out both; }
-.fresh path { stroke-dasharray: 1; animation: draw 300ms ease-out both; }
-
-@media (min-width: 940px) {
-  .task-scene { grid-template-columns: minmax(0, 430px) minmax(0, 1fr); }
-  .paper { position: sticky; top: 24px; }
-  .demo.plays .paper { position: relative; top: 0; }
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--ink);
+  font: 400 clamp(1.0625rem, 0.96rem + 0.42vw, 1.1875rem) / 1.45 var(--roman);
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- try it ---------- */
-.try { display: grid; gap: 18px; justify-items: start; padding: clamp(40px, 8vh, 88px) 0 88px; border-top: 1px solid var(--rule); }
-.try > p { max-width: 66ch; text-wrap: pretty; }
-.commands { display: grid; gap: 10px; justify-items: start; }
-.links { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 6px; }
-.links span { color: var(--faded); }
+:focus-visible { outline: 2px solid var(--added); outline-offset: 2px; }
 
-@media (max-width: 520px) {
-  .install { font-size: 15px; }
-  .top .install { display: none; }
-  .name { font-size: 36px; }
-  .numbers { order: -1; flex-basis: 100%; gap: 0; justify-content: space-between; }
-  .numbers button { width: 28px; height: 28px; }
-  .paper { font-size: 14.5px; }
+a { color: inherit; text-decoration-thickness: 0.05em; text-underline-offset: 0.16em; }
+a.cite { text-decoration: none; }
+a.cite:hover { text-decoration: underline; }
+.people .cite { margin-left: 0.3em; }
+a, code { hyphens: manual; -webkit-hyphens: manual; }
+
+/* the sheet of paper */
+
+.sheet {
+  position: relative;
+  width: min(65rem, 100%);
+  margin: 2.5rem auto 5rem;
+  background: var(--page);
+  box-shadow: var(--shadow);
 }
+
+.running {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: var(--head);
+  padding: 0 var(--gutter);
+  background: var(--page);
+}
+.running p {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  max-width: var(--measure);
+  height: calc(100% - 0.5rem);
+  margin: 0 auto;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--ink);
+}
+.running a, .running span { font-size: 0.9em; }
+.running a { font-style: italic; text-decoration: none; }
+.running a:hover { text-decoration: underline; }
+
+main {
+  position: relative;
+  z-index: 1;
+  max-width: calc(var(--measure) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 3.6rem var(--gutter) 6rem;
+}
+
+[id] { scroll-margin-top: calc(var(--head) + 1rem); }
+
+/* the watermark of a draft */
+
+.watermark {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  height: 100svh;
+  margin: 0 0 -100svh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: var(--draft, 1);
+  transition: opacity 0.7s ease;
+}
+.watermark span {
+  font: 400 clamp(6.5rem, 24vw, 16.5rem) / 1 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mark);
+  transform: rotate(-33deg);
+}
+html:not(.js) .watermark, html:not(.js) [data-status] { display: none; }
+
+/* title, people, abstract */
+
+h1 {
+  margin: 0;
+  font: 400 clamp(3.5rem, 2.4rem + 5.4vw, 5rem) / 1 var(--display);
+  text-align: center;
+}
+h1 small {
+  display: block;
+  margin-top: 0.5em;
+  font-size: 0.34em;
+  line-height: 1.25;
+}
+
+.people {
+  display: flex;
+  justify-content: center;
+  gap: 2.4em;
+  margin: 2.1rem 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  font-size: 1.06em;
+  line-height: 1.3;
+}
+.people li { display: flex; flex-direction: column; }
+.people i { font-size: 0.86em; }
+.get { margin-top: 1.7rem; text-indent: 0; }
+.get .display { width: fit-content; max-width: 100%; margin: 0 auto; }
+
+.abstract { margin: 2.6rem 2em 0; font-size: 0.95em; }
+.abstract h2 { margin: 0 0 0.55em; font-size: 1em; text-align: center; }
+.abstract p + p { text-indent: 0; }
+
+.draft { margin-bottom: 0.1em; }
+.said { position: relative; color: var(--struck); text-decoration: none; }
+.said::after {
+  content: "";
+  position: absolute;
+  left: -0.12em;
+  right: -0.12em;
+  top: 0.66em;
+  border-top: 0.07em solid var(--struck);
+  transform-origin: left center;
+}
+.note {
+  display: block;
+  width: fit-content;
+  margin: 0.45em 0 0.7em;
+  padding: 0.28em 0.6em 0.3em;
+  border: 1px solid var(--on-note);
+  border-radius: 0.2em;
+  background: var(--note);
+  color: var(--on-note);
+  font-size: 0.9em;
+  line-height: 1.25;
+  text-align: left;
+}
+
+@media (min-width: 66rem) {
+  .draft { position: relative; display: flex; align-items: center; margin-right: calc(-2em - 1.4rem); }
+  .leader { flex: 1; margin-left: 0.5em; border-top: 1px solid var(--note); }
+  .note { position: absolute; left: 100%; top: 50%; width: 9.4rem; margin: -0.95em 0 0; }
+}
+
+/* running text */
+
+p { margin: 0; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+p + p { text-indent: 1.5em; }
+p.flush { text-indent: 0; }
+
+h2 {
+  margin: 2.3em 0 0.75em;
+  font: 700 1.44em / 1.2 var(--roman);
+}
+h2 .no { margin-right: 1em; }
+
+code { font-family: var(--mono); font-size: 0.92em; }
+
+.steps { margin: 0 0 0.9em; padding-left: 1.6em; }
+.steps li { padding-left: 0.3em; }
+.steps li + li { margin-top: 0.35em; }
+
+pre, .display, .listing {
+  display: block;
+  margin: 0.55em 0 0.95em;
+  padding: 0.6em 0.9em;
+  background: var(--listing);
+  font: 400 0.765em / 1.5 var(--mono);
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  tab-size: 2;
+}
+pre code, .display code, .listing code { font-size: 1em; }
+pre .l { display: block; padding-left: 2ch; text-indent: -2ch; }
+pre b { font-weight: 700; }
+
+.display { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; margin-bottom: 0.6em; }
+.copy {
+  flex: none;
+  padding: 0 0.2em;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: italic 400 1.1em / 1 var(--roman);
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.16em;
+  cursor: pointer;
+}
+
+table { margin: 1em auto 1.2em; border-collapse: collapse; font-size: 0.95em; line-height: 1.35; }
+caption { caption-side: top; padding-bottom: 0.55em; text-align: center; }
+th, td { padding: 0.26em 0.9em; font-weight: 400; text-align: left; vertical-align: top; }
+thead th { padding-block: 0.4em; border-top: 0.09em solid var(--ink); border-bottom: 0.05em solid var(--ink); }
+tbody tr:first-child > * { padding-top: 0.45em; }
+tbody tr:last-child > * { padding-bottom: 0.45em; border-bottom: 0.09em solid var(--ink); }
+
+/* one task: claims, proofs and what the tool printed */
+
+.task { margin-top: 1.1em; }
+figure { margin: 0; }
+
+.proofs { font-size: 0.95em; line-height: 1.4; }
+.proofs p { text-align: left; text-indent: 0; hyphens: manual; -webkit-hyphens: manual; }
+.plan { padding-bottom: 0.45em; border-bottom: 1px solid var(--ink); }
+.claim { margin-top: 0.6em; }
+.proof { display: flow-root; }
+
+.tags { float: right; margin-left: 1.2em; }
+.tag { font-family: var(--mono); font-size: 0.8em; white-space: nowrap; }
+.tag::before { content: "["; }
+.tag::after { content: "]"; }
+
+.qed {
+  float: right;
+  width: 0.62em;
+  height: 0.62em;
+  margin: 0.42em 0.05em 0 0.8em;
+  background: currentColor;
+}
+
+del { text-decoration: none; }
+html:not(.js) [data-until] { display: none; }
+[data-state="off"] { display: none; }
+[data-state="new"] { color: var(--added); }
+.tag[data-state="flagged"] { padding: 0.05em 0.35em; border: 1px solid var(--on-note); border-radius: 0.2em; background: var(--note); color: var(--on-note); }
+.tag[data-state="flagged"]::before, .tag[data-state="flagged"]::after { content: none; }
+span[data-state="new"]:not(.tag, .qed) { text-decoration: underline wavy; text-decoration-thickness: 0.05em; text-underline-offset: 0.2em; }
+del[data-state="struck"] { color: var(--struck); text-decoration: line-through; text-decoration-thickness: 0.07em; }
+
+.frames { margin: 1.1em 0 0; padding: 0; list-style: none; }
+.caption { text-indent: 0; font-size: 0.95em; line-height: 1.38; text-align: left; hyphens: manual; -webkit-hyphens: manual; }
+.frame pre { margin-bottom: 1.2em; }
+
+.js .pin { position: sticky; top: calc(var(--head) + 0.9rem); padding-bottom: 0.6rem; }
+.js .frames { display: grid; }
+.js .frame { grid-area: 1 / 1; opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
+.js .frame.on { opacity: 1; pointer-events: auto; }
+.js .frame pre { margin-bottom: 0.7em; }
+
+.where { display: grid; grid-template-columns: auto 1fr; gap: 0.15em 1em; margin: 0; }
+.where dt { font-weight: 700; }
+.where dd { margin: 0; overflow-wrap: break-word; min-width: 0; }
+
+.closing { text-indent: 0; display: flow-root; }
+.closing .qed { margin-top: 0.45em; }
+
+.refs { margin: 0; padding: 0; list-style: none; counter-reset: ref; }
+.refs li { position: relative; padding-left: 2.1em; counter-increment: ref; }
+.refs li::before { content: "[" counter(ref) "]"; position: absolute; left: 0; }
+
+/* the page arrives as a draft: the agent's sentence is struck, the referee answers */
+
+@media (prefers-reduced-motion: no-preference) {
+  .said { animation: redden 0.01s 0.9s both; }
+  .said::after { animation: strike 0.45s 0.9s cubic-bezier(0.6, 0, 0.2, 1) both; }
+  .leader { animation: appear 0.3s 1.4s both; }
+  .note { animation: appear 0.3s 1.55s both; }
+  .changed { animation: settle 1.8s both; }
+}
+@keyframes settle { 0%, 60% { color: var(--added); } }
+@keyframes redden { from { color: var(--ink); } }
+@keyframes strike { from { transform: scaleX(0); } }
+@keyframes appear { from { opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .opening.go .circled path, .opening.go .note, .opening.go .signed, .fresh, .fresh path { animation: none; }
+  .watermark, .js .frame { transition: none; }
+}
+
+@media (max-width: 65rem) {
+  .sheet { margin: 0 auto; box-shadow: none; }
+}
+
+@media (max-width: 40rem) {
+  main { padding-top: 2.4rem; padding-bottom: 4rem; }
+  p, .caption { text-align: left; }
+  .people { flex-direction: column; gap: 0.25em; font-size: 1em; }
+  .people li { display: block; }
+  .abstract { margin-inline: 0; }
+  pre, .listing { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); font-size: 0.765rem; }
+  .display { font-size: 0.8rem; }
+  table { font-size: 0.86em; }
+  th, td { padding-inline: 0.45em; }
+  th:first-child { padding-left: 0; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .proofs { font-size: 0.92em; line-height: 1.33; }
+  .claim { margin-top: 0.45em; }
+  .caption { font-size: 0.92em; }
 }

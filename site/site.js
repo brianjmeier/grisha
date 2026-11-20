@@ -1,111 +1,101 @@
-for (const button of document.querySelectorAll(".copy")) {
-  button.addEventListener("click", async () => {
-    const command = button.previousElementSibling.textContent.replace(/^\$ /, "")
-    try {
-      await navigator.clipboard.writeText(command)
-    } catch {
-      return
+document.documentElement.classList.add("js")
+
+const STAGES = ["Draft", "Submitted", "Checked", "Rewritten", "Sent back", "Rechecked", "Rechecked", "Sent back", "Approved", "Accepted"]
+
+document.addEventListener("DOMContentLoaded", () => {
+  const root = document.documentElement
+  const status = document.querySelector("[data-status]")
+  const head = document.querySelector(".running")
+  const task = document.querySelector("[data-task]")
+  const pin = task.querySelector(".pin")
+  const proofs = task.querySelector(".proofs")
+  const frames = [...task.querySelectorAll(".frame")]
+  const parts = [...task.querySelectorAll("[data-from], [data-until]")]
+  let shown = -1
+  let width = 0
+  let settled = false
+
+  for (const button of document.querySelectorAll(".copy")) {
+    button.hidden = false
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.previousElementSibling.textContent)
+      } catch {
+        return
+      }
+      button.textContent = "copied"
+    })
+  }
+
+  const stateAt = (part, frame) => {
+    const from = Number(part.dataset.from ?? 0)
+    const until = part.dataset.until === undefined ? Infinity : Number(part.dataset.until)
+    if (frame < from || frame > until) return "off"
+    if (frame === until) return part.tagName === "DEL" ? "struck" : "off"
+    if (frame === Number(part.dataset.flag)) return "flagged"
+    return frame === from && from > 0 ? "new" : "on"
+  }
+
+  const show = (frame) => {
+    if (frame === shown) return
+    shown = frame
+    for (const part of parts) part.dataset.state = stateAt(part, frame)
+    frames.forEach((element, index) => element.classList.toggle("on", index === frame))
+  }
+
+  const place = () => {
+    const top = parseFloat(getComputedStyle(pin).top) || 0
+    const span = task.offsetHeight - pin.offsetHeight
+    const done = span > 0 ? Math.min(1, Math.max(0, (top - task.getBoundingClientRect().top) / span)) : 0
+    const frame = Math.min(frames.length - 1, Math.floor(done * frames.length))
+    show(frame)
+    root.style.setProperty("--draft", String(1 - frame / (frames.length - 1)))
+    const stage = STAGES[frame]
+    if (status.textContent === stage) return
+    status.textContent = stage
+    status.classList.remove("changed")
+    if (!settled) return
+    void status.offsetWidth
+    status.classList.add("changed")
+  }
+
+  const measure = () => {
+    const now = shown
+    proofs.style.minHeight = ""
+    let tallest = 0
+    for (let frame = 0; frame < frames.length; frame += 1) {
+      show(frame)
+      tallest = Math.max(tallest, proofs.offsetHeight)
     }
-    button.textContent = "copied"
+    proofs.style.minHeight = `${tallest}px`
+    show(Math.max(now, 0))
+    const room = window.innerHeight
+    const below = head.offsetHeight + 12
+    const spare = room - pin.offsetHeight
+    pin.style.top = `${Math.round(spare < below ? spare : Math.max(below, spare * 0.36))}px`
+    const step = Math.min(340, Math.max(220, room * 0.34))
+    task.style.height = `${Math.round(pin.offsetHeight + frames.length * step)}px`
+    place()
+  }
+
+  let waiting = false
+  const later = () => {
+    if (waiting) return
+    waiting = true
+    requestAnimationFrame(() => {
+      waiting = false
+      place()
+    })
+  }
+
+  addEventListener("scroll", later, { passive: true })
+  addEventListener("resize", () => {
+    if (window.innerWidth === width) return later()
+    width = window.innerWidth
+    measure()
   })
-}
-
-const STEP_MS = 6500
-const TICK = '<svg viewBox="0 0 48 40" aria-hidden="true"><path pathLength="1" d="M4 22 C 9 25, 14 31, 17 37 C 23 21, 33 9, 45 3"/></svg>'
-const CROSS = '<svg viewBox="0 0 40 40" aria-hidden="true"><path pathLength="1" d="M6 5 C 14 14, 26 26, 35 36 M34 6 C 26 14, 14 27, 5 35"/></svg>'
-
-const afterChange = { approved: true, "counts-unread": `${TICK}proven.`, "still-a-number": "stale." }
-const bothProven = { ...afterChange, "still-a-number": `${TICK}proven. It failed first.` }
-const settled = { ...bothProven, "other-tenants": "for you to read.", read: true }
-const SHEET_AT_STEP = [
-  {},
-  {},
-  { approved: true },
-  { approved: true, "counts-unread": `${CROSS}failing. Good.`, "still-a-number": "passes. Never seen failing." },
-  afterChange,
-  { ...afterChange, verdict: "Not yet." },
-  bothProven,
-  { ...bothProven, added: true },
-  settled,
-  { ...settled, verdict: "Now it's done. &mdash; Grisha" },
-]
-
-function play(demo) {
-  const opening = demo.querySelector(".opening")
-  const task = demo.querySelector(".task-scene")
-  const steps = [...demo.querySelectorAll(".flow li")]
-  const titles = [opening.dataset.title, ...steps.map((step) => step.querySelector("h2").textContent)]
-  const paper = demo.querySelector(".paper")
-  const marks = [...paper.querySelectorAll("[data-mark]")]
-  const how = paper.querySelector("[data-how]")
-  const added = paper.querySelector("[data-added]")
-  const approved = paper.querySelector("[data-approved]")
-  const verdict = paper.querySelector("[data-verdict]")
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches
-  let at = 0
-  let timer = null
-  let wanted = !still
-  let seen = false
-
-  const controls = document.createElement("div")
-  controls.className = "controls"
-  controls.innerHTML = `<button type="button" data-go="back">back</button><ol class="numbers">${titles.map((_, index) => `<li><button type="button" data-step="${index}">${index + 1}</button></li>`).join("")}</ol><button type="button" data-go="next">next</button><button type="button" data-go="toggle"></button>`
-  demo.querySelector(".stage").before(controls)
-  const toggle = controls.querySelector('[data-go="toggle"]')
-  const numbers = [...controls.querySelectorAll("[data-step]")]
-  numbers.forEach((button, index) => button.setAttribute("aria-label", `Step ${index + 1}: ${titles[index]}`))
-
-  const restart = (element, name, on) => {
-    element.classList.remove(name)
-    void element.offsetWidth
-    if (on) element.classList.add(name)
-  }
-  const write = (element, html) => {
-    if (element.dataset.shown === html) return
-    element.dataset.shown = html
-    element.innerHTML = html
-    restart(element, "fresh", Boolean(html))
-  }
-  const show = (index) => {
-    const from = at
-    at = (index + titles.length) % titles.length
-    const sheet = SHEET_AT_STEP[at]
-    opening.classList.toggle("away", at !== 0)
-    task.classList.toggle("away", at === 0)
-    if (at === 0 && from !== 0) restart(opening, "go", true)
-    steps.forEach((step, each) => step.classList.toggle("now", each === at - 1))
-    numbers.forEach((button, each) => (each === at ? button.setAttribute("aria-current", "step") : button.removeAttribute("aria-current")))
-    for (const mark of marks) write(mark, sheet[mark.dataset.mark] ?? "")
-    write(verdict, sheet.verdict ?? "")
-    how.textContent = sheet.read ? "by person reads" : "by nothing yet"
-    approved.style.visibility = sheet.approved ? "visible" : "hidden"
-    added.classList.toggle("off", !sheet.added)
-    added.classList.toggle("fresh", Boolean(sheet.added))
-  }
-  const run = () => {
-    clearInterval(timer)
-    timer = wanted && seen ? setInterval(() => show(at + 1), STEP_MS) : null
-    toggle.textContent = wanted ? "pause" : "play"
-  }
-
-  controls.addEventListener("click", (event) => {
-    const button = event.target.closest("button")
-    if (!button) return
-    if (button.dataset.go === "toggle") wanted = !wanted
-    else {
-      wanted = false
-      show(button.dataset.step ? Number(button.dataset.step) : at + (button.dataset.go === "next" ? 1 : -1))
-    }
-    run()
-  })
-  new IntersectionObserver(([entry]) => {
-    seen = entry.isIntersecting
-    run()
-  }, { threshold: 0.35 }).observe(demo.querySelector(".stage"))
-
-  demo.classList.add("plays")
-  show(0)
-  run()
-}
-
-for (const demo of document.querySelectorAll(".demo")) play(demo)
+  width = window.innerWidth
+  measure()
+  settled = true
+  document.fonts?.ready.then(measure)
+})

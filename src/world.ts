@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 type Ran = { code: number; out: string }
@@ -12,17 +12,19 @@ export type World = {
   at: (folder: string) => World
   print: (text: string) => void
   read: (path: string) => string | null
+  source: (path: string) => string | null
   write: (path: string, text: string) => void
   append: (path: string, text: string) => void
   git: (args: string[]) => Ran
   sh: (command: string, cwd: string) => Ran
 }
 
-export function realIO(cwd: string): Pick<World, "print" | "read" | "write" | "append" | "git" | "sh"> {
+export function realIO(cwd: string): Pick<World, "print" | "read" | "source" | "write" | "append" | "git" | "sh"> {
   const prepare = (path: string) => mkdirSync(dirname(path), { recursive: true })
   return {
     print: (text) => console.log(text),
     read: (path) => (existsSync(path) && statSync(path).isFile() ? readFileSync(path, "utf8") : null),
+    source: (path) => (lstatSync(path, { throwIfNoEntry: false })?.isFile() ? readFileSync(path, "utf8") : null),
     write: (path, text) => {
       prepare(path)
       writeFileSync(path, text)

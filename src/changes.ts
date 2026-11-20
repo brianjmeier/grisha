@@ -65,7 +65,7 @@ export function changedFiles(world: Git, base: string): string[] {
   return [...lines(git(world, ["diff", "--name-only", base, "--", ":/"])), ...untracked(world)]
 }
 
-export function addedLines(world: Git & Pick<World, "read">, root: string, base: string, wanted: string[]): Added[] {
+export function addedLines(world: Git & Pick<World, "source">, root: string, base: string, wanted: string[]): Added[] {
   const added: Added[] = []
   let file = ""
   let line = 0
@@ -85,8 +85,8 @@ export function addedLines(world: Git & Pick<World, "read">, root: string, base:
   return added
 }
 
-export function linesOf(world: Pick<World, "read">, root: string, path: string): Added[] {
-  const text = world.read(join(root, path))
+export function linesOf(world: Pick<World, "source">, root: string, path: string): Added[] {
+  const text = world.source(join(root, path))
   if (text === null || text.length > LARGEST_FILE_READ || text.includes("\0")) return []
   return text.split("\n").map((row, index) => ({ file: path, line: index + 1, text: row }))
 }

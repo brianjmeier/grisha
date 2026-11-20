@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { session } from "../scripts/session"
@@ -234,6 +234,18 @@ test("a rule set to every line blocks code that was already there", async () => 
   const counts = lines(checked.out).map((line) => line.trim().split(/ {2,}/))
   expect(counts).toContainEqual(["no-effects", "every line", "2 lines in 2 files"])
   expect(counts).toContainEqual(["no-comments", "added lines", "1 line in 1 file"])
+})
+
+test("a link in the checkout is not followed to the file it points at", async () => {
+  const { run, share, git, root } = scene()
+  const elsewhere = join(temp("elsewhere"), "notes.tsx")
+  writeFileSync(elsewhere, "useEffect(() => {})\n")
+  symlinkSync(elsewhere, join(root, "src/Committed.tsx"))
+  git("add", ".")
+  share({ rules: [{ name: "no-effects", pattern: "\\buseEffect\\(", files: ["**/*.tsx"], fix: "Use the loader.", blocks: "every line" }] })
+  symlinkSync(elsewhere, join(root, "src/New.tsx"))
+  expect((await run(["gate"])).out).toContain("No rule is broken.")
+  expect((await run(["rules"])).out).toContain("  no-effects  every line   none")
 })
 
 test("a folder that git lists as one entry, as it does a submodule, is passed over", async () => {

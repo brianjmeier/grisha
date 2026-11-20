@@ -2,7 +2,7 @@
   "name": "grisha",
   "version": "0.0.1",
   "private": true,
-  "description": "One place for your rules, and one loop your coding agent repeats until they are all met.",
+  "description": "Makes a coding agent show its work is done: a check that was run for every claim about a task, and rules for the lines a branch adds.",
   "license": "MIT",
   "repository": "github:brianjmeier/grisha",
   "type": "module",

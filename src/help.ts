@@ -1,4 +1,5 @@
-const HELP = `grisha: one place for your rules, and one loop an agent repeats until they are all met.
+const HELP = `grisha: makes a coding agent show its work is done. Every claim about a task has a check
+that was run, and rules block the lines a branch adds.
 
 The loop
   grisha next         where the task stands and the one thing to do now.

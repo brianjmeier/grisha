@@ -806,12 +806,10 @@ test("every starter rule catches the line it is for and lets the line beside it 
   expect(starter.map((rule) => rule.name).filter((name) => !rows.some(([, , rule]) => rule === name))).toEqual([])
 })
 
-test("every output the README quotes is what the command prints", async () => {
-  const printed = await session(() => new Date("2026-11-18T12:00:00Z"))
-  const readme = readFileSync(join(import.meta.dir, "..", "README.md"), "utf8")
-  const quoted = [...readme.matchAll(/```(console|json)\n([\s\S]*?)\n```/g)].filter(([, kind, body = ""]) => kind === "console" || body.includes('"units"'))
-  expect(quoted.length).toBeGreaterThan(8)
-  const wrong = quoted.flatMap(([, , body = ""]) => {
+const page = (name: string) => readFileSync(join(import.meta.dir, "..", name), "utf8")
+
+function notPrinted(printed: string, quoted: string[]): string[] {
+  return quoted.flatMap((body) => {
     let from = 0
     return body.split(/^…$/m).flatMap((part) => {
       const piece = part.trim()
@@ -821,5 +819,19 @@ test("every output the README quotes is what the command prints", async () => {
       return []
     })
   })
-  expect(wrong).toEqual([])
+}
+
+test("every output the README quotes is what the command prints", async () => {
+  const printed = await session(() => new Date("2026-11-18T12:00:00Z"))
+  const quoted = [...page("README.md").matchAll(/```(console|json)\n([\s\S]*?)\n```/g)].filter(([, kind, body = ""]) => kind === "console" || body.includes('"units"'))
+  expect(quoted.length).toBeGreaterThan(8)
+  expect(notPrinted(printed, quoted.map(([, , body = ""]) => body))).toEqual([])
+})
+
+test("every output the website quotes is what the command prints", async () => {
+  const printed = await session(() => new Date("2026-11-18T12:00:00Z"))
+  const written = { "&lt;": "<", "&gt;": ">", "&amp;": "&" }
+  const quoted = [...page("site/index.html").matchAll(/<pre>([\s\S]*?)<\/pre>/g)].map(([, body = ""]) => body.replace(/<[^>]+>/g, "").replace(/&(lt|gt|amp);/g, (entity) => written[entity as keyof typeof written]))
+  expect(quoted.length).toBeGreaterThan(4)
+  expect(notPrinted(printed, quoted)).toEqual([])
 })

@@ -22,8 +22,8 @@ The agent types the commands. You approve the plan and read the result.
 Grisha runs on [Bun](https://bun.sh), so install that first.
 
 ```sh
-npm install -g github:brianjmeier/grisha    # puts `grisha` on your PATH; the same line updates it later
-grisha rules --init                         # writes the starter rules to ~/.grisha/rules.json
+npm install -g grisha    # puts `grisha` on your PATH; the same line updates it later
+grisha rules --init      # writes the starter rules to ~/.grisha/rules.json
 ```
 
 **1. Try the rules.** They need no agent and no task. In any git checkout:
@@ -379,7 +379,9 @@ bun run check      # types
 bun run session    # prints the task this page quotes, from the first command to the pull request section
 ```
 
-A test fails when an output quoted on this page is no longer what the command prints.
+A test fails when an output quoted on this page, or on the website in `site/`, is no longer what the command prints.
+
+A push to `main` publishes to npm when the version in `package.json` is one npm does not have yet, so a release is a version bump. The same push updates [grisha.brianmeier.dev](https://grisha.brianmeier.dev).
 
 ## Licence
 
